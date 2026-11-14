@@ -7,6 +7,7 @@
     "demo": "tsx src/demo.ts",
     "bench": "tsx src/bench.ts",
     "race": "tsx src/race.ts",
+    "crowd": "tsx src/crowd.ts",
     "analyze": "tsx src/analyze.ts",
     "typecheck": "tsc --noEmit"
   },

@@ -42,6 +42,8 @@ abstract contract LienHarness is Test {
     uint256 internal uniHead;
     ISystemContract.CallbackConfiguration_V_1_0[] internal cbQ;
     uint256 internal logNonce;
+    /// Gas used by the recipient in the most recently delivered callback (the call alone, no harness work).
+    uint256 internal lastCallbackGas;
 
     function setUp() public virtual {
         MockSystem impl = new MockSystem();
@@ -149,12 +151,33 @@ abstract contract LienHarness is Test {
         assembly {
             mstore(add(p, 36), rvm)
         }
-        address proxy = c.chainId == BASE ? BASE_PROXY : UNI_PROXY;
+        // Callbacks to Reactive itself (batch continuations) come from an unspecified sender; the recipient
+        // must not depend on it, so the harness sends them from an arbitrary address.
+        address proxy = c.chainId == BASE ? BASE_PROXY : c.chainId == UNI ? UNI_PROXY : address(0xA11CE);
         vm.prank(proxy);
+        uint256 g0 = gasleft();
         (bool ok,) = c.recipient.call{gas: c.gasLimit}(p);
+        lastCallbackGas = g0 - gasleft();
         assertTrue(ok, "callback reverted");
         _capture();
         return true;
+    }
+
+    /// Index in the callback queue of the next continuation the ClearingHouse sent to itself, if any.
+    function _selfCallbackIndex() internal view returns (bool found, uint256 index) {
+        for (uint256 i = 0; i < cbQ.length; i++) {
+            if (cbQ[i].chainId == block.chainid && cbQ[i].recipient == address(ch)) return (true, i);
+        }
+    }
+
+    /// Delivers one queued self-callback and returns the gas it used, within its own gas limit.
+    function _deliverSelfCallbackMeasured() internal returns (uint256 gasUsed) {
+        (bool found, uint256 i) = _selfCallbackIndex();
+        require(found, "no continuation queued");
+        uint64 limit = cbQ[i].gasLimit;
+        _deliverCallback(i); // runs the recipient with exactly `limit` gas and asserts it did not revert
+        gasUsed = lastCallbackGas;
+        assertLe(gasUsed, limit, "continuation exceeded its gas limit");
     }
 
     function _settleAll() internal {

@@ -179,18 +179,106 @@ contract LienFlowsTest is LienHarness {
         assertEq(market.limitOf(alice), 1_470e6);
     }
 
-    function test_usersBeyondCapGetNoCreditButCanExit() public {
-        for (uint256 i = 0; i < ch.MAX_USERS(); i++) {
+    function test_noAccountCapEveryDepositorGetsCredit() public {
+        uint256 n = 5 * ch.BATCH();
+        for (uint256 i = 0; i < n; i++) {
             _deposit(address(uint160(0x1000 + i)), 1e18);
         }
-        address late = makeAddr("late");
-        _deposit(late, 1e18);
         _settleAll();
-        assertEq(ch.usersCount(), ch.MAX_USERS());
-        assertEq(market.limitOf(late), 0);
-        _requestWithdraw(late, 1e18);
+        assertEq(ch.usersCount(), n);
+        assertEq(market.limitOf(address(uint160(0x1000 + n - 1))), 1_400e6);
+    }
+
+    /// 27 borrowers at the limit, then a crash: every one is flagged, in batches that each fit the gas cap.
+    function test_priceUpdateRechecksEveryAccountInBatches() public {
+        uint256 n = 3 * ch.BATCH() + 3;
+        _borrowers(0x4000, n, 1_400e6);
+
+        _setPrice(1_600e8);
+        uint256 gasUsed = _deliverBaseMeasured();
+        emit log_named_uint("react() gas, first batch of a price update", gasUsed);
+        assertLt(gasUsed, 900_000);
+        assertEq(ch.repriceCursor(), ch.BATCH());
+
+        uint256 batches = 1;
+        while (true) {
+            (bool found,) = _selfCallbackIndex();
+            if (!found) break;
+            uint256 g = _deliverSelfCallbackMeasured();
+            emit log_named_uint("continuation gas, one further batch", g);
+            assertLt(g, 900_000);
+            batches++;
+        }
+        assertEq(batches, 4);
+        assertEq(ch.repriceCursor(), n);
+
         _settleAll();
-        assertEq(weth.balanceOf(late), 1e18);
+        for (uint256 i = 0; i < n; i++) {
+            assertTrue(market.liquidatable(address(uint160(0x4000 + i))));
+        }
+    }
+
+    /// A second price arriving mid-pass restarts the re-check; the first pass's continuation does nothing.
+    function test_newerPriceRestartsThePass() public {
+        uint256 n = 2 * ch.BATCH() + 4;
+        _borrowers(0x5000, n, 1_400e6);
+
+        _setPrice(1_600e8);
+        _deliverBase(); // first batch flagged, continuation for pass 1 queued
+        _setPrice(2_000e8);
+        _deliverBase(); // pass 2 starts from the first account
+        assertEq(ch.repriceEpoch(), 2);
+        assertEq(ch.repriceCursor(), ch.BATCH());
+
+        _settleAll();
+        assertEq(ch.repriceCursor(), n);
+        for (uint256 i = 0; i < n; i++) {
+            address u = address(uint160(0x5000 + i));
+            assertFalse(market.liquidatable(u));
+            assertEq(market.limitOf(u), 1_400e6);
+        }
+    }
+
+    /// Anyone may call continueReprice, but it only ever runs the next unprocessed batch of the current pass,
+    /// so each account is re-checked exactly once per price and a finished or stale pass costs nothing.
+    function test_continueRepriceIsSafeForAnyone() public {
+        uint256 n = 2 * ch.BATCH() + 4;
+        _borrowers(0x6000, n, 1_400e6);
+        uint64[] memory seqBefore = new uint64[](n);
+        for (uint256 i = 0; i < n; i++) {
+            seqBefore[i] = market.lastSeq(address(uint160(0x6000 + i)));
+        }
+
+        _setPrice(1_600e8);
+        _deliverBase();
+        address stranger = makeAddr("stranger");
+        vm.prank(stranger);
+        ch.continueReprice(stranger, 1); // front-runs the contract's own continuation
+        _capture();
+        _settleAll();
+
+        for (uint256 i = 0; i < n; i++) {
+            address u = address(uint160(0x6000 + i));
+            assertTrue(market.liquidatable(u));
+            assertEq(market.lastSeq(u), seqBefore[i] + 1, "each account synced once per price");
+        }
+
+        uint256 before = sys.callbacksCount();
+        vm.prank(stranger);
+        ch.continueReprice(stranger, 1); // pass finished
+        vm.prank(stranger);
+        ch.continueReprice(stranger, 0); // stale pass
+        assertEq(sys.callbacksCount(), before);
+    }
+
+    function _borrowers(uint160 first, uint256 n, uint256 amount) internal {
+        for (uint256 i = 0; i < n; i++) {
+            address u = address(first + uint160(i));
+            _deposit(u, 1e18);
+            _settleAll();
+            assertTrue(_borrow(u, amount));
+        }
+        _settleAll();
     }
 
     function test_callbacksRejectStrangers() public {
@@ -224,8 +312,8 @@ contract LienFlowsTest is LienHarness {
         assertEq(weth.balanceOf(bob), 0.1e18);
     }
 
-    function test_priceUpdateForMaxUsersFitsReactiveGasCap() public {
-        uint256 n = ch.MAX_USERS();
+    function test_priceUpdateForOneFullBatchFitsReactiveGasCap() public {
+        uint256 n = ch.BATCH();
         for (uint256 i = 0; i < n; i++) {
             address u = address(uint160(0x2000 + i));
             _deposit(u, 1e18);

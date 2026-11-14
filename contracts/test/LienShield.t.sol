@@ -221,8 +221,8 @@ contract LienShieldTest is LienHarness {
         assertEq(ch.protectBps(), 7_800);
     }
 
-    function test_crashProtectingMaxUsersFitsReactiveGasCap() public {
-        uint256 n = ch.MAX_USERS();
+    function test_crashProtectingOneFullBatchFitsReactiveGasCap() public {
+        uint256 n = ch.BATCH();
         for (uint256 i = 0; i < n; i++) {
             address u = address(uint160(0x3000 + i));
             _deposit(u, 1e18);
@@ -242,6 +242,27 @@ contract LienShieldTest is LienHarness {
         _settleAll();
         for (uint256 i = 0; i < n; i++) {
             address u = address(uint160(0x3000 + i));
+            assertFalse(market.liquidatable(u));
+            assertEq(market.debtOf(u), 1_120e6);
+        }
+    }
+
+    /// Shielded accounts beyond the first batch are protected by the continuation, never left liquidatable.
+    function test_crashProtectsAccountsBeyondTheFirstBatch() public {
+        uint256 n = 2 * ch.BATCH() + 5;
+        for (uint256 i = 0; i < n; i++) {
+            address u = address(uint160(0x7000 + i));
+            _deposit(u, 1e18);
+            _settleAll();
+            _borrow(u, 1_400e6);
+            _fundShield(u, 500e6);
+        }
+        _settleAll();
+
+        _setPrice(1_600e8);
+        _settleAll();
+        for (uint256 i = 0; i < n; i++) {
+            address u = address(uint160(0x7000 + i));
             assertFalse(market.liquidatable(u));
             assertEq(market.debtOf(u), 1_120e6);
         }

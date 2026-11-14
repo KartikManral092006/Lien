@@ -47,8 +47,12 @@ contract ClearingHouse is AbstractReactive {
     uint256 public constant COLL_UNIT = 1e18;
     uint256 public constant DEBT_UNIT = 1e6;
     uint256 public constant PRICE_UNIT = 1e8;
-    uint256 public constant MAX_USERS = 8;
+    /// Accounts re-checked per transaction after a price update. The first batch runs inside react(); each
+    /// further batch runs in a callback this contract sends to itself on Reactive, a fresh transaction with
+    /// its own gas budget, so the number of accounts is not bounded by one transaction's 900k gas cap.
+    uint256 public constant BATCH = 8;
     uint64 public constant CALLBACK_GAS = 400_000;
+    uint64 public constant CONTINUE_GAS = 700_000;
 
     uint256 internal immutable T_DEPOSITED = uint256(IVaultEvents.Deposited.selector);
     uint256 internal immutable T_WITHDRAW_REQUESTED = uint256(IVaultEvents.WithdrawRequested.selector);
@@ -83,6 +87,10 @@ contract ClearingHouse is AbstractReactive {
     mapping(address => uint256[]) internal awaiting;
     address[] public users;
 
+    /// Each price update starts a new re-check pass; `repriceCursor` is the next account it has not reached.
+    uint256 public repriceEpoch;
+    uint256 public repriceCursor;
+
     event Reacted(
         Kind indexed kind, address indexed user, uint256 originChainId, uint256 originTxHash, uint256 originBlock
     );
@@ -90,8 +98,8 @@ contract ClearingHouse is AbstractReactive {
     event WithdrawDecision(address indexed user, uint256 indexed reqId, bool release, uint256 debt, uint256 limitAfter);
     event SeizeSent(address indexed user, address indexed liquidator, uint256 indexed liqId, uint256 amount);
     event ProtectionSent(address indexed user, uint64 indexed seq, uint256 debt, uint256 limit, uint256 shield);
-    event UserNotTracked(address indexed user);
     event PriceSynced(uint256 price);
+    event RepriceBatch(uint256 indexed epoch, uint256 from, uint256 to, uint256 total);
     event Configured(
         uint256 baseChainId, address vault, address feed, uint256 unichainChainId, address market, uint256 price
     );
@@ -287,9 +295,35 @@ contract ClearingHouse is AbstractReactive {
         if (newPrice == 0) return;
         price = newPrice;
         emit PriceSynced(newPrice);
+        // A newer price supersedes any pass still running: start again from the first account.
+        uint256 epoch = ++repriceEpoch;
+        repriceCursor = 0;
+        _repriceBatch(epoch);
+    }
+
+    /// Continues a price update's re-check with the next batch of accounts. Reached through the callback
+    /// this contract sends to itself on Reactive. It is open to anyone because it can only do work the
+    /// ledger owes anyway: the next unprocessed batch of the current pass, once. A call for an older pass,
+    /// or after the pass has finished, does nothing. The first argument is overwritten by Reactive.
+    function continueReprice(address, uint256 epoch) external {
+        if (epoch != repriceEpoch) return;
+        _repriceBatch(epoch);
+    }
+
+    function _repriceBatch(uint256 epoch) internal {
         uint256 n = users.length;
-        for (uint256 i = 0; i < n; i++) {
+        uint256 from = repriceCursor;
+        if (from >= n) return;
+        uint256 to = from + BATCH < n ? from + BATCH : n;
+        repriceCursor = to;
+        emit RepriceBatch(epoch, from, to, n);
+        for (uint256 i = from; i < to; i++) {
             _sync(users[i], 0, false);
+        }
+        if (to < n) {
+            _request(
+                block.chainid, address(this), abi.encodeCall(this.continueReprice, (address(0), epoch)), CONTINUE_GAS
+            );
         }
     }
 
@@ -414,23 +448,24 @@ contract ClearingHouse is AbstractReactive {
         }
     }
 
+    /// Every depositor is tracked; there is no account cap (price updates re-check accounts in batches).
     function _track(address user) internal returns (bool) {
         Account storage a = accounts[user];
         if (a.tracked) return true;
-        if (users.length >= MAX_USERS) {
-            emit UserNotTracked(user);
-            return false;
-        }
         a.tracked = true;
         users.push(user);
         return true;
     }
 
     function _request(uint256 chainId, address recipient, bytes memory payload) internal {
+        _request(chainId, recipient, payload, CALLBACK_GAS);
+    }
+
+    function _request(uint256 chainId, address recipient, bytes memory payload, uint64 gasLimit) internal {
         // forge-lint: disable-start(calls-loop)
         SYSTEM.requestCallbackV_1_0(
             ISystemContract.CallbackConfiguration_V_1_0({
-                chainId: chainId, recipient: recipient, gasLimit: CALLBACK_GAS, payload: payload
+                chainId: chainId, recipient: recipient, gasLimit: gasLimit, payload: payload
             })
         );
         // forge-lint: disable-end(calls-loop)

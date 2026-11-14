@@ -39,7 +39,7 @@ Basic Reactive cross-chain lending examples exist from 2024–25 ("deposit on Se
 4. **Price drop → liquidatable (1 loop).** Base `PriceUpdated` → ClearingHouse re-checks every account → `sync(liquidatable)`.
 5. **Cross-chain liquidation (1 loop).** Liquidator repays on Unichain → ClearingHouse computes `repaid / price × (1 + bonus)` → `seize` on Base pays the liquidator.
 
-Parameters: LTV 70 %, liquidation threshold 80 %, bonus 5 %, close factor 50 %, at most 8 tracked users.
+Parameters: LTV 70 %, liquidation threshold 80 %, bonus 5 %, close factor 50 %, no account cap (price re-checks run in batches of 8, continued by self-callbacks on Lasna).
 
 ## 4. Experiments and metrics
 
@@ -81,7 +81,7 @@ Cut order if behind: dashboard polish → liquidation bench → price bench. Nev
 
 - Reactive Network is the clearing house; it is a trust assumption like any cross-chain messaging layer.
 - Base is an L2 with soft finality; a reorg after credit is granted could void a deposit.
-- Mock oracle, no interest, owner-seeded liquidity, 8-user cap, testnet only.
+- Mock oracle, no interest, owner-seeded liquidity, testnet only.
 
 ## 8. Questions to be ready for
 
