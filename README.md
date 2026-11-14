@@ -109,25 +109,27 @@ Unified position across the three chains, buttons for every action (including *C
 
 ## Deployed contracts
 
-Fill in after `scripts/deploy.sh`:
-
 | Contract | Chain | Address |
 |---|---|---|
-| ClearingHouse | Reactive Lasna (5318007) | `TBD` |
-| CollateralVault | Base Sepolia (84532) | `TBD` |
-| MockPriceFeed | Base Sepolia | `TBD` |
-| CreditMarket | Unichain Sepolia (1301) | `TBD` |
+| ClearingHouse | Reactive Lasna (5318007) | [`0x27aaCFF011Eb4c6b1CC73c9C250C317bBaAA8aC6`](https://lasna.reactscan.net/address/0x27aaCFF011Eb4c6b1CC73c9C250C317bBaAA8aC6) |
+| CollateralVault | Base Sepolia (84532) | [`0x7791bd27ea7640e10Eb66196B09f297a0746908b`](https://sepolia.basescan.org/address/0x7791bd27ea7640e10Eb66196B09f297a0746908b) |
+| MockPriceFeed | Base Sepolia (84532) | [`0xCC0d36E8f458b880ee0678d216AD45183962265E`](https://sepolia.basescan.org/address/0xCC0d36E8f458b880ee0678d216AD45183962265E) |
+| Test WETH | Base Sepolia (84532) | [`0x27aaCFF011Eb4c6b1CC73c9C250C317bBaAA8aC6`](https://sepolia.basescan.org/address/0x27aaCFF011Eb4c6b1CC73c9C250C317bBaAA8aC6) |
+| CreditMarket | Unichain Sepolia (1301) | [`0xCC0d36E8f458b880ee0678d216AD45183962265E`](https://sepolia.uniscan.xyz/address/0xCC0d36E8f458b880ee0678d216AD45183962265E) |
+| Test USDC | Unichain Sepolia (1301) | [`0x27aaCFF011Eb4c6b1CC73c9C250C317bBaAA8aC6`](https://sepolia.uniscan.xyz/address/0x27aaCFF011Eb4c6b1CC73c9C250C317bBaAA8aC6) |
+
+Some addresses repeat across chains on purpose: the deployer was a fresh account on every chain, and a `CREATE` address depends only on deployer and nonce. They are different contracts on different chains.
 
 ## Full-loop transactions
 
-Fill in from `npm run demo` output (origin → Lasna → destination):
+From the first `npm run demo` on testnet (origin → Lasna → destination):
 
-| Flow | Origin | Reactive | Destination |
+| Flow | Origin | Reactive (Lasna) | Destination |
 |---|---|---|---|
-| Deposit → credit | | | |
-| Withdraw phase 1 → phase 2 → release | | | |
-| Crash → liquidatable | | | |
-| Liquidation → seizure | | | |
+| Deposit → credit | [Base `0xf456…dae8`](https://sepolia.basescan.org/tx/0xf456754e59380bf813b32856684bac089d85b8e2032a032cde8138b6a5c6dae8) | [`0x4395…d7df`](https://lasna.reactscan.net/tx/0x4395f2c5dec39eb8ad9c75a0604fd23b9b7baf28ea6a8e3a91edf86ee9bcd7df) | [Unichain `0xad68…7d06`](https://sepolia.uniscan.xyz/tx/0xad68f00b352fbfff481439359490a000995b64246e58b885ef61a624e6227d06) |
+| Withdraw: request → lower limit → debt snapshot → decide → release | [Base `0x0121…2a67`](https://sepolia.basescan.org/tx/0x0121d7cc0e9ac191a929f6e42533f544656a54a88559cc4de337f8e67de62a67) | [`0x5fe1…decc`](https://lasna.reactscan.net/tx/0x5fe1aa0df6cefd1c3d7da687fcc1b1308156909682d2c31c25949c4cd141decc), [Unichain `0x96b1…3630`](https://sepolia.uniscan.xyz/tx/0x96b16dc616946c04e530e401ade83cc0869756607248164e740aece794383630), [`0xb747…3255`](https://lasna.reactscan.net/tx/0xb7471a2bb641d8b5e644992ebfeb4894f0a2869801aaa034d07c8b737cae3255) | [Base `0x8035…b454`](https://sepolia.basescan.org/tx/0x8035928b9fc03fa840e1080be742f7911c09f3b5d9366a33987e9b687d9bb454) |
+| Crash → liquidatable | [Base `0x89fb…b2d0`](https://sepolia.basescan.org/tx/0x89fbdd39bd587db6589535908aac770bca98461da9b4c0b21ba049498bead2b0) | [`0x0cf7…f01b`](https://lasna.reactscan.net/tx/0x0cf7cc19e29a66c9f2dfa6e8874fe79a1cad234fd31a27d7f8667154678bf01b) | [Unichain `0xbf3d…c5c6`](https://sepolia.uniscan.xyz/tx/0xbf3da0707b1d196336e75c547ffaa99c98421104b1c5182d48ce471fb1e6b0c5) |
+| Liquidation → seizure | [Unichain `0xdbf9…0688`](https://sepolia.uniscan.xyz/tx/0xdbf993dbd461a23a7002e16a84ca40c38cf8553939cf0ddd63ee469b24360688) | [`0xbc4c…3be9`](https://lasna.reactscan.net/tx/0xbc4c39f5a5a664ebeba134a45aa544bac8bc8c8cd4c419c09154f297243c3be9) | [Base `0x0939…d862`](https://sepolia.basescan.org/tx/0x0939bfbc57881d3daf4f634273f24ba4bebb55a053ed6614e2a9000431a1d862) |
 
 ## Results
 

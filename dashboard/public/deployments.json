@@ -1,0 +1,6 @@
+{
+  "deployer": "0xe26C810E1185f023B8394d061ab59452E19e739C",
+  "lasna": { "chainId": 5318007, "clearingHouse": "0x27aaCFF011Eb4c6b1CC73c9C250C317bBaAA8aC6", "fromBlock": 8312851 },
+  "base": { "chainId": 84532, "vault": "0x7791bd27ea7640e10Eb66196B09f297a0746908b", "feed": "0xCC0d36E8f458b880ee0678d216AD45183962265E", "weth": "0x27aaCFF011Eb4c6b1CC73c9C250C317bBaAA8aC6", "callbackProxy": "0x476F44b11F5C942c58f4c8E3d0300E5710743585", "fromBlock": 58613088 },
+  "unichain": { "chainId": 1301, "market": "0xCC0d36E8f458b880ee0678d216AD45183962265E", "usdc": "0x27aaCFF011Eb4c6b1CC73c9C250C317bBaAA8aC6", "callbackProxy": "0x775c9B990ADe401060B78D0e98684eEf8d2466C1", "fromBlock": 67792058 }
+}

@@ -43,7 +43,9 @@ type Summary = {
 
 type Step = { address: Address; abi: Abi; functionName: string; args?: readonly unknown[] };
 
-const WINDOW: Record<ChainKey, bigint> = { base: 3000n, unichain: 900n, lasna: 900n };
+// How far back the timeline looks. Base Sepolia makes ~5 blocks/s, so 1,500 blocks is about 5 minutes.
+const WINDOW: Record<ChainKey, bigint> = { base: 1500n, unichain: 900n, lasna: 900n };
+const MAX_LOG_RANGE = 150n;
 
 async function readState(d: Deployments, who: Address): Promise<State> {
   const [collateral, pending, free, weth, price, chAcc, chPrice, ltv, lt, debt, limit, available, liquidatable, usdc] = await Promise.all([
@@ -136,8 +138,16 @@ async function fetchTimeline(d: Deployments): Promise<Item[]> {
     sources.map(async (s) => {
       const lo = head[s.chain] > WINDOW[s.chain] ? head[s.chain] - WINDOW[s.chain] : 0n;
       const fromBlock = lo > BigInt(s.from) ? lo : BigInt(s.from);
-      const logs = await (pub[s.chain] as any).getContractEvents({ address: s.address, abi: s.abi, fromBlock });
-      return (logs as any[]).map((l) => ({ ...l, chain: s.chain }));
+      // Public RPCs cap eth_getLogs ranges (sepolia.base.org: 200 blocks), so query in bounded windows.
+      const windows: [bigint, bigint][] = [];
+      for (let from = fromBlock; from <= head[s.chain]; from += MAX_LOG_RANGE) {
+        const end = from + MAX_LOG_RANGE - 1n;
+        windows.push([from, end < head[s.chain] ? end : head[s.chain]]);
+      }
+      const parts = await Promise.all(
+        windows.map(([from, to]) => (pub[s.chain] as any).getContractEvents({ address: s.address, abi: s.abi, fromBlock: from, toBlock: to })),
+      );
+      return (parts.flat() as any[]).map((l) => ({ ...l, chain: s.chain }));
     }),
   );
   const flat = batches.flat().sort((a, b) => Number(b.blockNumber - a.blockNumber)).slice(0, 60);

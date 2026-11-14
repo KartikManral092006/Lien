@@ -1,7 +1,7 @@
 import { marketAbi, vaultAbi } from "./abi.js";
 import { COLL_UNIT, DEBT_UNIT, dep, PRICE_UNIT } from "./config.js";
 import { flowDeposit, flowLiquidation, flowPrice, flowWithdraw, position, repayAll, user, waitNotLiquidatable } from "./flows.js";
-import { appendRun, fmtUnits, printFlow, read, send, type FlowResult } from "./util.js";
+import { appendRun, fmtUnits, pollUntil, printFlow, read, send, type FlowResult } from "./util.js";
 
 const runId = `demo-${Date.now()}`;
 const START_PRICE = 2_000n * PRICE_UNIT;
@@ -41,6 +41,8 @@ async function main() {
   console.log("\n[2] Borrow 1,000 USDC on Unichain against collateral that never left Base");
   const b = await send("unichain", { address: dep.unichain.market, abi: marketAbi, functionName: "borrow", args: [1_000n * DEBT_UNIT] });
   console.log(`  borrow tx https://sepolia.uniscan.xyz/tx/${b.hash}`);
+  // Load-balanced RPC nodes can lag the one that returned the receipt; wait until the debt is visible.
+  await pollUntil("borrow visible on Unichain", async () => ((await position()).debt >= 1_000n * DEBT_UNIT ? true : undefined), 30_000);
   await show("After borrow");
 
   console.log("\n[3] Withdraw 0.2 WETH on Base -> two-phase commit (lower credit first, then release)");

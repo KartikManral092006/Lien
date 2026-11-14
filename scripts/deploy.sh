@@ -52,8 +52,17 @@ forge build
 DEPLOYER="$(cast wallet address --private-key "$PRIVATE_KEY")"
 echo "Deployer: $DEPLOYER"
 
-echo "1/7 ClearingHouse on Lasna (funded with $CH_FUNDING lREACT)"
-CH="$(create "$LASNA_RPC" src/ClearingHouse.sol:ClearingHouse --value "$CH_FUNDING")"
+if [[ -n "${CH_ADDRESS:-}" ]]; then
+  if [[ "$(cast code "$CH_ADDRESS" --rpc-url "$LASNA_RPC")" == "0x" ]]; then
+    echo "CH_ADDRESS=$CH_ADDRESS has no code on Lasna" >&2
+    exit 1
+  fi
+  echo "1/7 Reusing ClearingHouse $CH_ADDRESS on Lasna (balance $(cast balance "$CH_ADDRESS" --rpc-url "$LASNA_RPC" --ether) lREACT)"
+  CH="$CH_ADDRESS"
+else
+  echo "1/7 ClearingHouse on Lasna (funded with $CH_FUNDING lREACT)"
+  CH="$(create "$LASNA_RPC" src/ClearingHouse.sol:ClearingHouse --value "$CH_FUNDING")"
+fi
 
 echo "2/7 Test WETH on Base Sepolia"
 WETH="$(create "$BASE_RPC" src/mocks/MockToken.sol:MockToken --constructor-args "Lien Test WETH" "WETH" 18 "$WETH_MINT_CAP")"

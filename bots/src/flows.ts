@@ -1,7 +1,7 @@
 import { hexToBigInt, maxUint256, parseEventLogs, type Address, type Hex, type WalletClient } from "viem";
 import { chAbi, feedAbi, Kind, marketAbi, tokenAbi, vaultAbi } from "./abi.js";
 import { account, COLL_UNIT, DEBT_UNIT, dep, liquidatorWallet, PRICE_UNIT, pub } from "./config.js";
-import { finish, makeLeg, pollUntil, read, send, type FlowResult, type Leg } from "./util.js";
+import { finish, logScanner, makeLeg, pollUntil, read, send, type FlowResult, type Leg } from "./util.js";
 
 const CH = dep.lasna.clearingHouse;
 const VAULT = dep.base.vault;
@@ -33,10 +33,13 @@ async function lasnaHead() {
 
 async function waitReacted(kind: number, originTx: Hex, fromBlock: bigint) {
   const want = hexToBigInt(originTx);
-  return pollUntil(`Lasna reaction (kind ${kind}) to ${originTx}`, async () => {
-    const logs = await pub.lasna.getContractEvents({ address: CH, abi: chAbi, eventName: "Reacted", args: { kind }, fromBlock });
-    return logs.find((l) => l.args.originTxHash === want);
-  });
+  return pollUntil(
+    `Lasna reaction (kind ${kind}) to ${originTx}`,
+    logScanner("lasna", fromBlock, async (from, to) => {
+      const logs = await pub.lasna.getContractEvents({ address: CH, abi: chAbi, eventName: "Reacted", args: { kind }, fromBlock: from, toBlock: to });
+      return logs.find((l) => l.args.originTxHash === want);
+    }),
+  );
 }
 
 async function syncFromReaction(lasnaTx: Hex, forUser: Address) {
@@ -46,10 +49,13 @@ async function syncFromReaction(lasnaTx: Hex, forUser: Address) {
 }
 
 async function waitLimitApplied(forUser: Address, seq: bigint, fromBlock: bigint) {
-  return pollUntil(`LimitApplied seq ${seq} on Unichain`, async () => {
-    const logs = await pub.unichain.getContractEvents({ address: MARKET, abi: marketAbi, eventName: "LimitApplied", args: { user: forUser, seq }, fromBlock });
-    return logs[0];
-  });
+  return pollUntil(
+    `LimitApplied seq ${seq} on Unichain`,
+    logScanner("unichain", fromBlock, async (from, to) => {
+      const logs = await pub.unichain.getContractEvents({ address: MARKET, abi: marketAbi, eventName: "LimitApplied", args: { user: forUser, seq }, fromBlock: from, toBlock: to });
+      return logs[0];
+    }),
+  );
 }
 
 export async function flowDeposit(runId: string, amount: bigint): Promise<FlowResult> {
@@ -92,10 +98,13 @@ export async function flowWithdraw(runId: string, amount: bigint): Promise<FlowR
     legs.push(await makeLeg("phase 2: decide", "lasna", r2.value.transactionHash, r2.value.blockNumber, r2.observedAt));
   }
 
-  const s = await pollUntil(`WithdrawSettled ${reqId}`, async () => {
-    const logs = await pub.base.getContractEvents({ address: VAULT, abi: vaultAbi, eventName: "WithdrawSettled", args: { user, reqId }, fromBlock: fromB });
-    return logs[0];
-  });
+  const s = await pollUntil(
+    `WithdrawSettled ${reqId}`,
+    logScanner("base", fromB, async (from, to) => {
+      const logs = await pub.base.getContractEvents({ address: VAULT, abi: vaultAbi, eventName: "WithdrawSettled", args: { user, reqId }, fromBlock: from, toBlock: to });
+      return logs[0];
+    }),
+  );
   legs.push(await makeLeg(s.value.args.released ? "collateral released" : "withdrawal rejected", "base", s.value.transactionHash, s.value.blockNumber, s.observedAt));
   return finish("withdraw_two_phase", runId, start, legs, { amount, reqId, released: s.value.args.released }, sync ? undefined : "decided in one loop");
 }
@@ -131,10 +140,13 @@ export async function flowLiquidation(runId: string, target: Address, repay: big
   const r = await waitReacted(Kind.Liquidated, o.hash, fromL);
   legs.push(await makeLeg("ClearingHouse computes seizure", "lasna", r.value.transactionHash, r.value.blockNumber, r.observedAt));
 
-  const s = await pollUntil(`Seized ${liqId}`, async () => {
-    const logs = await pub.base.getContractEvents({ address: VAULT, abi: vaultAbi, eventName: "Seized", args: { user: target, liqId }, fromBlock: fromB });
-    return logs[0];
-  });
+  const s = await pollUntil(
+    `Seized ${liqId}`,
+    logScanner("base", fromB, async (from, to) => {
+      const logs = await pub.base.getContractEvents({ address: VAULT, abi: vaultAbi, eventName: "Seized", args: { user: target, liqId }, fromBlock: from, toBlock: to });
+      return logs[0];
+    }),
+  );
   legs.push(await makeLeg("collateral paid to liquidator", "base", s.value.transactionHash, s.value.blockNumber, s.observedAt));
   return finish("liquidation_cross_chain", runId, start, legs, { repaid: liq.args.repaid, seized: s.value.args.amount, liqId });
 }

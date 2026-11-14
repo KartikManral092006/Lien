@@ -2,7 +2,7 @@ import { parseEventLogs } from "viem";
 import { chAbi, marketAbi, vaultAbi } from "./abi.js";
 import { COLL_UNIT, dep, pub } from "./config.js";
 import { ensureWeth, position, repayAll, user, waitLimitAtLeast } from "./flows.js";
-import { appendRun, argFlag, fmtUnits, pollUntil, read, send } from "./util.js";
+import { appendRun, argFlag, fmtUnits, logScanner, pollUntil, read, send } from "./util.js";
 
 const n = Number(argFlag("n", "20"));
 const runId = `race-${Date.now()}`;
@@ -42,10 +42,13 @@ async function main() {
     if (w.status !== "fulfilled") throw new Error(`withdraw request failed: ${String(w.reason)}`);
     const reqId = parseEventLogs({ abi: vaultAbi, logs: w.value.receipt.logs, eventName: "WithdrawRequested" })[0].args.reqId;
 
-    const settled = await pollUntil(`WithdrawSettled ${reqId}`, async () => {
-      const logs = await pub.base.getContractEvents({ address: VAULT, abi: vaultAbi, eventName: "WithdrawSettled", args: { user, reqId }, fromBlock: fromB });
-      return logs[0];
-    });
+    const settled = await pollUntil(
+      `WithdrawSettled ${reqId}`,
+      logScanner("base", fromB, async (from, to) => {
+        const logs = await pub.base.getContractEvents({ address: VAULT, abi: vaultAbi, eventName: "WithdrawSettled", args: { user, reqId }, fromBlock: from, toBlock: to });
+        return logs[0];
+      }),
+    );
 
     const p = await position();
     const ltv = await read<bigint>("lasna", dep.lasna.clearingHouse, chAbi, "ltvBps");

@@ -28,14 +28,46 @@ export type FlowResult = {
 
 export const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
+// Public RPCs cap eth_getLogs ranges (sepolia.base.org: 200 blocks, and Base Sepolia makes ~5 blocks/s),
+// so a fixed "fromBlock -> latest" query starts failing permanently after ~40 s. Scan in bounded windows instead.
+const MAX_LOG_RANGE = 150n;
+const RESCAN_TAIL = 5n;
+
+export function logScanner<T>(chain: ChainKey, fromBlock: bigint, query: (from: bigint, to: bigint) => Promise<T | undefined>) {
+  let cursor = fromBlock;
+  return async (): Promise<T | undefined> => {
+    const head = await (pub[chain] as PublicClient).getBlockNumber();
+    while (cursor <= head) {
+      const end = cursor + MAX_LOG_RANGE - 1n;
+      const to = end < head ? end : head;
+      const hit = await query(cursor, to);
+      if (hit !== undefined) return hit;
+      if (to < head) {
+        cursor = to + 1n;
+      } else {
+        // Re-read the last few blocks next time in case the node had not indexed their logs yet.
+        if (to - RESCAN_TAIL > cursor) cursor = to - RESCAN_TAIL;
+        break;
+      }
+    }
+    return undefined;
+  };
+}
+
 export async function pollUntil<T>(label: string, fn: () => Promise<T | undefined>, timeoutMs = 180_000) {
   const start = Date.now();
+  const seen = new Set<string>();
   for (;;) {
     let v: T | undefined;
     try {
       v = await fn();
-    } catch {
+    } catch (e: any) {
       v = undefined;
+      const msg = String(e?.details ?? e?.shortMessage ?? e?.message ?? e).slice(0, 200);
+      if (!seen.has(msg)) {
+        seen.add(msg);
+        console.warn(`  [retrying] ${label}: ${msg}`);
+      }
     }
     if (v !== undefined) return { value: v, observedAt: Date.now() };
     if (Date.now() - start > timeoutMs) throw new Error(`Timed out after ${timeoutMs} ms waiting for ${label}`);
@@ -50,7 +82,9 @@ export async function blockTimeMs(chain: ChainKey, blockNumber: bigint) {
   const cached = blockTimes.get(key);
   if (cached !== undefined) return cached;
   const client = pub[chain] as PublicClient;
-  const b = await client.getBlock({ blockNumber });
+  // Public RPCs are load-balanced: the node that returned a receipt can be ahead of the node that
+  // answers the next getBlock, which then reports BlockNotFound for a block that exists. Retry briefly.
+  const { value: b } = await pollUntil(`block ${blockNumber} on ${chain}`, () => client.getBlock({ blockNumber }), 30_000);
   const ms = Number(b.timestamp) * 1000;
   blockTimes.set(key, ms);
   return ms;
