@@ -1,6 +1,6 @@
 import { marketAbi, vaultAbi } from "./abi.js";
 import { COLL_UNIT, dep, PRICE_UNIT } from "./config.js";
-import { flowDeposit, flowLiquidation, flowPrice, flowWithdraw, position, repayAll, user, waitNotLiquidatable } from "./flows.js";
+import { ensureShield, flowDeposit, flowLiquidation, flowPrice, flowProtection, flowWithdraw, position, repayAll, user, waitNotLiquidatable } from "./flows.js";
 import { appendRun, argFlag, read, send, type FlowResult } from "./util.js";
 
 const n = Number(argFlag("n", "20"));
@@ -50,6 +50,15 @@ async function main() {
       await attempt("price_crash_to_flag", () => flowPrice(runId, 1_700n * PRICE_UNIT));
       const debt = await read<bigint>("unichain", dep.unichain.market, marketAbi, "debtOf", [user]);
       await attempt("liquidation_cross_chain", () => flowLiquidation(runId, user, debt / 2n));
+      await repayAll();
+      await attempt("price_restore", () => flowPrice(runId, START_PRICE));
+    }
+    if (flows.includes("protection")) {
+      await ensureBaseline();
+      const avail = await read<bigint>("unichain", dep.unichain.market, marketAbi, "availableCredit", [user]);
+      if (avail > 0n) await send("unichain", { address: dep.unichain.market, abi: marketAbi, functionName: "borrow", args: [avail] });
+      await ensureShield(300n * 10n ** 6n);
+      await attempt("protection", () => flowProtection(runId, (START_PRICE * 80n) / 100n));
       await repayAll();
       await attempt("price_restore", () => flowPrice(runId, START_PRICE));
     }

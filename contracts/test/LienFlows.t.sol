@@ -11,8 +11,8 @@ contract LienFlowsTest is LienHarness {
     address internal alice = makeAddr("alice");
     address internal bob = makeAddr("bob");
 
-    function test_configureCreatesEightSubscriptions() public view {
-        assertEq(sys.subsCount(), 8);
+    function test_configureCreatesNineSubscriptions() public view {
+        assertEq(sys.subsCount(), 9);
         assertTrue(ch.configured());
         assertEq(ch.price(), PRICE0);
     }
@@ -33,7 +33,7 @@ contract LienFlowsTest is LienHarness {
         assertEq(market.limitOf(alice), 0);
         _settleAll();
         assertEq(market.limitOf(alice), 1_400e6);
-        (uint256 c,,,,,,) = ch.accounts(alice);
+        (uint256 c,,,,,,,) = ch.accounts(alice);
         assertEq(c, 1e18);
     }
 
@@ -45,7 +45,7 @@ contract LienFlowsTest is LienHarness {
         assertFalse(_borrow(alice, 401e6));
         assertTrue(_borrow(alice, 400e6));
         _settleAll();
-        (,, uint256 d,,,,) = ch.accounts(alice);
+        (,, uint256 d,,,,,) = ch.accounts(alice);
         assertEq(d, 1_400e6);
     }
 
@@ -195,11 +195,11 @@ contract LienFlowsTest is LienHarness {
 
     function test_callbacksRejectStrangers() public {
         vm.expectRevert(abi.encodeWithSelector(AbstractPayer.NotAuthorized.selector, address(this), UNI_PROXY));
-        market.sync(address(ch), alice, 1e12, false, 1, 0);
+        market.sync(address(ch), alice, 1e12, false, 1, 0, false);
 
         vm.prank(UNI_PROXY);
         vm.expectRevert(abi.encodeWithSelector(AbstractCallback.CallbackNotAuthorized.selector, bob, address(ch)));
-        market.sync(bob, alice, 1e12, false, 1, 0);
+        market.sync(bob, alice, 1e12, false, 1, 0, false);
 
         vm.prank(BASE_PROXY);
         vm.expectRevert(abi.encodeWithSelector(AbstractCallback.CallbackNotAuthorized.selector, bob, address(ch)));
@@ -208,9 +208,9 @@ contract LienFlowsTest is LienHarness {
 
     function test_staleSyncIsIgnored() public {
         vm.prank(UNI_PROXY);
-        market.sync(address(ch), alice, 500e6, false, 5, 0);
+        market.sync(address(ch), alice, 500e6, false, 5, 0, false);
         vm.prank(UNI_PROXY);
-        market.sync(address(ch), alice, 900e6, false, 4, 0);
+        market.sync(address(ch), alice, 900e6, false, 4, 0, false);
         assertEq(market.limitOf(alice), 500e6);
         assertEq(market.lastSeq(alice), 5);
     }

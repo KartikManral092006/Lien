@@ -1,5 +1,5 @@
 import { hexToBigInt, maxUint256, parseEventLogs, type Address, type Hex, type WalletClient } from "viem";
-import { chAbi, feedAbi, Kind, marketAbi, tokenAbi, vaultAbi } from "./abi.js";
+import { chAbi, chShieldAbi, feedAbi, Kind, marketAbi, tokenAbi, vaultAbi } from "./abi.js";
 import { account, COLL_UNIT, DEBT_UNIT, dep, liquidatorWallet, PRICE_UNIT, pub } from "./config.js";
 import { finish, logScanner, makeLeg, pollUntil, read, send, type FlowResult, type Leg } from "./util.js";
 
@@ -149,6 +149,61 @@ export async function flowLiquidation(runId: string, target: Address, repay: big
   );
   legs.push(await makeLeg("collateral paid to liquidator", "base", s.value.transactionHash, s.value.blockNumber, s.observedAt));
   return finish("liquidation_cross_chain", runId, start, legs, { repaid: liq.args.repaid, seized: s.value.args.amount, liqId });
+}
+
+/** True when the deployed market has auto-protection (shields). Older deployments don't. */
+export async function shieldSupported() {
+  try {
+    await read<bigint>("unichain", MARKET, marketAbi, "totalShield");
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export async function ensureShield(amount: bigint) {
+  const have = await read<bigint>("unichain", MARKET, marketAbi, "shieldOf", [user]);
+  if (have < amount) {
+    await ensureUsdc(amount - have);
+    await send("unichain", { address: MARKET, abi: marketAbi, functionName: "fundShield", args: [amount - have] });
+  }
+  // Protection is decided on Reactive, so wait until the ledger has seen the shield before moving the price.
+  await pollUntil("ledger sees the shield", async () => {
+    const acc = await read<readonly unknown[]>("lasna", CH, chShieldAbi, "accounts", [user]);
+    return (acc[7] as bigint) >= amount ? true : undefined;
+  });
+}
+
+export async function withdrawShieldAll() {
+  const s = await read<bigint>("unichain", MARKET, marketAbi, "shieldOf", [user]);
+  if (s > 0n) await send("unichain", { address: MARKET, abi: marketAbi, functionName: "withdrawShield", args: [s] });
+}
+
+/**
+ * Price drop -> ClearingHouse re-prices and orders protection -> Unichain repays from the shield in the
+ * same callback that would otherwise flag the account. The end-to-end time is how long a borrower is
+ * exposed before Reactive steps in.
+ */
+export async function flowProtection(runId: string, newPrice: bigint): Promise<FlowResult> {
+  const fromL = await lasnaHead();
+  const fromU = await pub.unichain.getBlockNumber();
+  const start = Date.now();
+  const o = await send("base", { address: FEED, abi: feedAbi, functionName: "setPrice", args: [newPrice] });
+  const legs: Leg[] = [await makeLeg("price drop (origin)", "base", o.hash, o.receipt.blockNumber, o.minedObservedAt)];
+
+  const r = await waitReacted(Kind.Price, o.hash, fromL);
+  legs.push(await makeLeg("ClearingHouse orders protection", "lasna", r.value.transactionHash, r.value.blockNumber, r.observedAt));
+
+  const p = await pollUntil(
+    `Protected for ${user}`,
+    logScanner("unichain", fromU, async (from, to) => {
+      const logs = await pub.unichain.getContractEvents({ address: MARKET, abi: marketAbi, eventName: "Protected", args: { user }, fromBlock: from, toBlock: to });
+      return logs[0];
+    }),
+  );
+  legs.push(await makeLeg("shield repaid debt (callback)", "unichain", p.value.transactionHash, p.value.blockNumber, p.observedAt));
+  const flagged = await read<boolean>("unichain", MARKET, marketAbi, "liquidatable", [user]);
+  return finish("protection", runId, start, legs, { newPrice, repaid: p.value.args.repaid, debt: p.value.args.debt, shieldLeft: p.value.args.shieldLeft, flagged });
 }
 
 export async function position(who: Address = user) {

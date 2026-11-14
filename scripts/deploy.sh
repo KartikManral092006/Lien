@@ -22,15 +22,12 @@ INITIAL_PRICE="${INITIAL_PRICE:-200000000000}"
 LIQUIDITY="${LIQUIDITY:-1000000000000}"
 WETH_MINT_CAP="${WETH_MINT_CAP:-10000000000000000000}"
 
-VERIFY_FLAGS=()
-if [[ "${VERIFY:-0}" == "1" ]]; then
-  VERIFY_FLAGS=(--verify --verifier sourcify)
-fi
+# Source verification runs after deployment (scripts/verify.sh), so a verifier outage never aborts a deploy.
 
 create() {
   local rpc="$1"; shift
   local out
-  out="$(forge create --broadcast --rpc-url "$rpc" --private-key "$PRIVATE_KEY" ${VERIFY_FLAGS[@]+"${VERIFY_FLAGS[@]}"} "$@")"
+  out="$(forge create --broadcast --rpc-url "$rpc" --private-key "$PRIVATE_KEY" "$@")"
   echo "$out" >&2
   local addr
   addr="$(echo "$out" | awk '/Deployed to:/ {print $3}')"
@@ -97,7 +94,8 @@ JSON="$(cat <<JSON
   "deployer": "$DEPLOYER",
   "lasna": { "chainId": 5318007, "clearingHouse": "$CH", "fromBlock": $LASNA_BLOCK },
   "base": { "chainId": $BASE_CHAIN_ID, "vault": "$VAULT", "feed": "$FEED", "weth": "$WETH", "callbackProxy": "$BASE_PROXY", "fromBlock": $BASE_BLOCK },
-  "unichain": { "chainId": $UNICHAIN_CHAIN_ID, "market": "$MARKET", "usdc": "$USDC", "callbackProxy": "$UNICHAIN_PROXY", "fromBlock": $UNICHAIN_BLOCK }
+  "unichain": { "chainId": $UNICHAIN_CHAIN_ID, "market": "$MARKET", "usdc": "$USDC", "callbackProxy": "$UNICHAIN_PROXY", "fromBlock": $UNICHAIN_BLOCK },
+  "params": { "initialPrice": "$INITIAL_PRICE", "liquidity": "$LIQUIDITY", "wethMintCap": "$WETH_MINT_CAP" }
 }
 JSON
 )"
@@ -108,3 +106,8 @@ echo "$JSON" > "$ROOT/dashboard/public/deployments.json"
 echo
 echo "Done. Addresses written to deployments.json"
 echo "$JSON"
+
+if [[ "${VERIFY:-0}" == "1" ]]; then
+  echo
+  "$ROOT/scripts/verify.sh" || echo "Verification did not finish; the deployment is fine. Re-run scripts/verify.sh later."
+fi

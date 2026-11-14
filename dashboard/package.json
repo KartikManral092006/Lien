@@ -8,13 +8,30 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@radix-ui/react-tabs": "^1.2.1",
+    "@radix-ui/react-tooltip": "^1.4.1",
+    "@rainbow-me/rainbowkit": "^2.2.11",
+    "@react-three/drei": "^9.122.0",
+    "@react-three/fiber": "^8.18.0",
+    "@tailwindcss/vite": "^4.3.5",
+    "@tanstack/react-query": "^5.107.1",
+    "clsx": "^2.1.1",
+    "lenis": "^1.3.27",
+    "lucide-react": "^1.73.0",
+    "motion": "^14.14.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
-    "viem": "^2.57.19"
+    "sonner": "^2.0.8",
+    "tailwind-merge": "^3.7.0",
+    "tailwindcss": "^4.3.5",
+    "three": "^0.187.0",
+    "viem": "^2.57.19",
+    "wagmi": "^2.19.5"
   },
   "devDependencies": {
     "@types/react": "^18.3.31",
     "@types/react-dom": "^18.3.7",
+    "@types/three": "^0.187.0",
     "@vitejs/plugin-react": "^4.7.0",
     "typescript": "^5.9.3",
     "vite": "^5.4.21"

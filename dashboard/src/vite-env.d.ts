@@ -4,8 +4,6 @@ interface ImportMetaEnv {
   readonly VITE_BASE_RPC?: string;
   readonly VITE_UNICHAIN_RPC?: string;
   readonly VITE_LASNA_RPC?: string;
-}
-
-interface Window {
-  ethereum?: import("viem").EIP1193Provider;
+  /** Optional. Enables WalletConnect (mobile wallets, QR). Browser wallets work without it. */
+  readonly VITE_WALLETCONNECT_PROJECT_ID?: string;
 }

@@ -1,11 +1,11 @@
-name: contracts
+name: ci
 
 on:
   push:
   pull_request:
 
 jobs:
-  test:
+  contracts:
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -19,3 +19,33 @@ jobs:
       - run: forge build
       - run: forge lint src
       - run: forge test -vv
+
+  bots:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: bots
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: bots/package-lock.json
+      - run: npm ci
+      - run: npm run typecheck
+
+  dashboard:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: dashboard
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: dashboard/package-lock.json
+      - run: npm ci
+      - run: npm run build

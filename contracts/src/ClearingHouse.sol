@@ -14,7 +14,8 @@ contract ClearingHouse is AbstractReactive {
         Price,
         Debt,
         LimitApplied,
-        Liquidated
+        Liquidated,
+        Shield
     }
 
     enum Status {
@@ -33,6 +34,7 @@ contract ClearingHouse is AbstractReactive {
         uint64 seq;
         bool liquidatable;
         bool tracked;
+        uint256 shield;
     }
 
     struct Withdrawal {
@@ -56,6 +58,7 @@ contract ClearingHouse is AbstractReactive {
     uint256 internal immutable T_DEBT = uint256(IMarketEvents.DebtUpdated.selector);
     uint256 internal immutable T_LIMIT_APPLIED = uint256(IMarketEvents.LimitApplied.selector);
     uint256 internal immutable T_LIQUIDATED = uint256(IMarketEvents.Liquidated.selector);
+    uint256 internal immutable T_SHIELD = uint256(IMarketEvents.ShieldUpdated.selector);
 
     address public owner;
     bool public configured;
@@ -71,6 +74,9 @@ contract ClearingHouse is AbstractReactive {
     uint256 public ltBps = 8_000;
     uint256 public bonusBps = 500;
     uint256 public minIncreaseBps = 100;
+    /// Shield repays kick in once debt exceeds this share of collateral value: after the borrow limit
+    /// (ltvBps), before the liquidation threshold (ltBps).
+    uint256 public protectBps = 7_500;
 
     mapping(address => Account) public accounts;
     mapping(uint256 => Withdrawal) public withdrawals;
@@ -83,12 +89,15 @@ contract ClearingHouse is AbstractReactive {
     event SyncSent(address indexed user, uint64 indexed seq, uint256 indexed reqId, uint256 limit, bool liquidatable);
     event WithdrawDecision(address indexed user, uint256 indexed reqId, bool release, uint256 debt, uint256 limitAfter);
     event SeizeSent(address indexed user, address indexed liquidator, uint256 indexed liqId, uint256 amount);
+    event ProtectionSent(address indexed user, uint64 indexed seq, uint256 debt, uint256 limit, uint256 shield);
     event UserNotTracked(address indexed user);
     event PriceSynced(uint256 price);
     event Configured(
         uint256 baseChainId, address vault, address feed, uint256 unichainChainId, address market, uint256 price
     );
-    event RiskParamsUpdated(uint256 ltvBps, uint256 ltBps, uint256 bonusBps, uint256 minIncreaseBps);
+    event RiskParamsUpdated(
+        uint256 ltvBps, uint256 ltBps, uint256 bonusBps, uint256 minIncreaseBps, uint256 protectBps
+    );
 
     error NotOwner();
     error AlreadyConfigured();
@@ -132,15 +141,22 @@ contract ClearingHouse is AbstractReactive {
         _subscribe(unichainChainId_, market_, T_DEBT);
         _subscribe(unichainChainId_, market_, T_LIMIT_APPLIED);
         _subscribe(unichainChainId_, market_, T_LIQUIDATED);
+        _subscribe(unichainChainId_, market_, T_SHIELD);
     }
 
-    function setRiskParams(uint256 ltv, uint256 lt, uint256 bonus, uint256 minIncrease) external onlyOwner {
-        if (ltv == 0 || ltv >= lt || lt >= 10_000 || bonus > 2_000) revert InvalidParams();
+    function setRiskParams(uint256 ltv, uint256 lt, uint256 bonus, uint256 minIncrease, uint256 protect)
+        external
+        onlyOwner
+    {
+        if (ltv == 0 || ltv >= protect || protect >= lt || lt >= 10_000 || bonus > 2_000) {
+            revert InvalidParams();
+        }
         ltvBps = ltv;
         ltBps = lt;
         bonusBps = bonus;
         minIncreaseBps = minIncrease;
-        emit RiskParamsUpdated(ltv, lt, bonus, minIncrease);
+        protectBps = protect;
+        emit RiskParamsUpdated(ltv, lt, bonus, minIncrease, protect);
     }
 
     function coverDebt() external onlyOwner {
@@ -167,6 +183,7 @@ contract ClearingHouse is AbstractReactive {
             if (t == T_DEBT) _onDebt(log_);
             else if (t == T_LIMIT_APPLIED) _onLimitApplied(log_);
             else if (t == T_LIQUIDATED) _onLiquidated(log_);
+            else if (t == T_SHIELD) _onShield(log_);
         }
     }
 
@@ -185,6 +202,12 @@ contract ClearingHouse is AbstractReactive {
     function isUnhealthy(address user) public view returns (bool) {
         Account storage a = accounts[user];
         return a.debt * 10_000 > valueOf(a.collateral) * ltBps;
+    }
+
+    /// True when debt is above the protection trigger and above the limit, and the user has a shield.
+    function needsProtection(address user) public view returns (bool) {
+        Account storage a = accounts[user];
+        return a.shield > 0 && a.debt > limitFor(_free(a)) && a.debt * 10_000 > valueOf(a.collateral) * protectBps;
     }
 
     function usersCount() external view returns (uint256) {
@@ -276,7 +299,10 @@ contract ClearingHouse is AbstractReactive {
         _mark(Kind.Debt, user, log_);
         Account storage a = accounts[user];
         a.debt = d;
-        if (a.tracked && a.liquidatable) _sync(user, 0, false);
+        // Re-evaluate on every debt change: a borrow made against a stale (higher) limit after a price
+        // drop can make the account unhealthy or push it past the protection trigger. _sync only sends
+        // a callback when the flag, the limit or the protection decision actually changes.
+        if (a.tracked) _sync(user, 0, false);
     }
 
     function _onLimitApplied(LogRecord calldata log_) internal {
@@ -328,13 +354,24 @@ contract ClearingHouse is AbstractReactive {
         if (a.tracked) _sync(user, 0, false);
     }
 
+    function _onShield(LogRecord calldata log_) internal {
+        address user = _addr(log_.topic1);
+        uint256 s = abi.decode(log_.data, (uint256));
+        _mark(Kind.Shield, user, log_);
+        Account storage a = accounts[user];
+        a.shield = s;
+        // A shield funded while already past the trigger protects the account right away.
+        if (a.tracked) _sync(user, 0, false);
+    }
+
     function _sync(address user, uint256 reqId, bool force) internal {
         Account storage a = accounts[user];
         uint256 newLimit = limitFor(_free(a));
         bool liq = isUnhealthy(user);
+        bool protect = needsProtection(user);
         uint256 old = a.limit;
 
-        bool send = force || liq != a.liquidatable || newLimit < old;
+        bool send = force || protect || liq != a.liquidatable || newLimit < old;
         if (!send && newLimit > old) {
             send = old == 0 || (newLimit - old) * 10_000 >= old * minIncreaseBps;
         }
@@ -342,11 +379,20 @@ contract ClearingHouse is AbstractReactive {
 
         a.limit = newLimit;
         a.liquidatable = liq;
-        uint64 seq = ++a.seq;
+        _sendSync(user, ++a.seq, reqId, protect);
+    }
+
+    /// Split out of _sync to stay within the legacy pipeline's stack limit.
+    function _sendSync(address user, uint64 seq, uint256 reqId, bool protect) internal {
+        Account storage a = accounts[user];
         // forge-lint: disable-next-line(reentrancy-events)
-        emit SyncSent(user, seq, reqId, newLimit, liq);
+        emit SyncSent(user, seq, reqId, a.limit, a.liquidatable);
+        // forge-lint: disable-next-line(reentrancy-events)
+        if (protect) emit ProtectionSent(user, seq, a.debt, a.limit, a.shield);
         _request(
-            unichainChainId, market, abi.encodeCall(ICreditMarket.sync, (address(0), user, newLimit, liq, seq, reqId))
+            unichainChainId,
+            market,
+            abi.encodeCall(ICreditMarket.sync, (address(0), user, a.limit, a.liquidatable, seq, reqId, protect))
         );
     }
 

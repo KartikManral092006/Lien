@@ -1,0 +1,115 @@
+{
+  "generatedAt": "2026-11-14T10:01:07.438Z",
+  "flows": {
+    "deposit_to_credit": {
+      "n": 5,
+      "p50": 6366,
+      "p90": 7561,
+      "p95": 7561,
+      "max": 7561,
+      "failures": 0,
+      "legs": [
+        {
+          "name": "base: deposit (origin)",
+          "p50": 2132,
+          "p95": 2773
+        },
+        {
+          "name": "lasna: ClearingHouse react",
+          "p50": 2240,
+          "p95": 2493
+        },
+        {
+          "name": "unichain: credit applied (callback)",
+          "p50": 2408,
+          "p95": 2722
+        }
+      ]
+    },
+    "withdraw_two_phase": {
+      "n": 9,
+      "p50": 9434,
+      "p90": 11501,
+      "p95": 11501,
+      "max": 11501,
+      "failures": 0,
+      "legs": [
+        {
+          "name": "base: requestWithdraw (origin)",
+          "p50": 2293,
+          "p95": 3623
+        },
+        {
+          "name": "lasna: phase 1: lower credit",
+          "p50": 1854,
+          "p95": 2993
+        },
+        {
+          "name": "unichain: limit applied + debt snapshot",
+          "p50": 2938,
+          "p95": 3253
+        },
+        {
+          "name": "lasna: phase 2: decide",
+          "p50": 721,
+          "p95": 1623
+        },
+        {
+          "name": "base: collateral released",
+          "p50": 1054,
+          "p95": 1692
+        }
+      ]
+    },
+    "price_to_limit": {
+      "n": 10,
+      "p50": 6721,
+      "p90": 7975,
+      "p95": 8242,
+      "max": 8242,
+      "failures": 0,
+      "legs": [
+        {
+          "name": "base: price update (origin)",
+          "p50": 2236,
+          "p95": 3026
+        },
+        {
+          "name": "lasna: ClearingHouse re-prices",
+          "p50": 1858,
+          "p95": 2904
+        },
+        {
+          "name": "unichain: flagged liquidatable",
+          "p50": 2672,
+          "p95": 3179
+        }
+      ]
+    },
+    "liquidation_cross_chain": {
+      "n": 1,
+      "p50": 8365,
+      "p90": 8365,
+      "p95": 8365,
+      "max": 8365,
+      "failures": 0,
+      "legs": [
+        {
+          "name": "unichain: liquidator repays (origin)",
+          "p50": 2104,
+          "p95": 2104
+        },
+        {
+          "name": "lasna: ClearingHouse computes seizure",
+          "p50": 5069,
+          "p95": 5069
+        },
+        {
+          "name": "base: collateral paid to liquidator",
+          "p50": 1192,
+          "p95": 1192
+        }
+      ]
+    }
+  }
+}

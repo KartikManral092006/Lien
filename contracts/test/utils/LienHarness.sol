@@ -221,6 +221,21 @@ abstract contract LienHarness is Test {
         _capture();
     }
 
+    function _fundShield(address u, uint256 amount) internal {
+        usdc.mint(u, amount);
+        vm.startPrank(u);
+        usdc.approve(address(market), amount);
+        market.fundShield(amount);
+        vm.stopPrank();
+        _capture();
+    }
+
+    function _withdrawShield(address u, uint256 amount) internal {
+        vm.prank(u);
+        market.withdrawShield(amount);
+        _capture();
+    }
+
     function _valueAt(uint256 p, uint256 coll) internal pure returns (uint256) {
         return coll * p * 1e6 / (1e18 * 1e8);
     }

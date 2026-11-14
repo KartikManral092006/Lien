@@ -39,6 +39,8 @@ interface IMarketEvents {
         address indexed user, address indexed liquidator, uint256 indexed liqId, uint256 repaid, uint256 debt
     );
     event SyncIgnored(address indexed user, uint64 seq, uint256 reqId);
+    event ShieldUpdated(address indexed user, uint256 shield);
+    event Protected(address indexed user, uint64 indexed seq, uint256 repaid, uint256 debt, uint256 shieldLeft);
 }
 
 interface ICollateralVault {
@@ -47,5 +49,6 @@ interface ICollateralVault {
 }
 
 interface ICreditMarket {
-    function sync(address rvm, address user, uint256 limit, bool liquidatable, uint64 seq, uint256 reqId) external;
+    function sync(address rvm, address user, uint256 limit, bool liquidatable, uint64 seq, uint256 reqId, bool protect)
+        external;
 }

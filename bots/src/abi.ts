@@ -37,9 +37,15 @@ export const marketAbi = parseAbi([
   "function liquidatable(address user) view returns (bool)",
   "function availableCredit(address user) view returns (uint256)",
   "function lastSeq(address user) view returns (uint64)",
+  "function shieldOf(address user) view returns (uint256)",
+  "function totalShield() view returns (uint256)",
+  "function fundShield(uint256 amount)",
+  "function withdrawShield(uint256 amount)",
   "event DebtUpdated(address indexed user, int256 change, uint256 debt)",
   "event LimitApplied(address indexed user, uint64 indexed seq, uint256 indexed reqId, uint256 limit, bool liquidatable, uint256 debt)",
   "event Liquidated(address indexed user, address indexed liquidator, uint256 indexed liqId, uint256 repaid, uint256 debt)",
+  "event ShieldUpdated(address indexed user, uint256 shield)",
+  "event Protected(address indexed user, uint64 indexed seq, uint256 repaid, uint256 debt, uint256 shieldLeft)",
 ]);
 
 export const chAbi = parseAbi([
@@ -47,11 +53,18 @@ export const chAbi = parseAbi([
   "function ltvBps() view returns (uint256)",
   "function ltBps() view returns (uint256)",
   "function usersCount() view returns (uint256)",
+  "function protectBps() view returns (uint256)",
   "function accounts(address user) view returns (uint256 collateral, uint256 pending, uint256 debt, uint256 limit, uint64 seq, bool liquidatable, bool tracked)",
   "event Reacted(uint8 indexed kind, address indexed user, uint256 originChainId, uint256 originTxHash, uint256 originBlock)",
   "event SyncSent(address indexed user, uint64 indexed seq, uint256 indexed reqId, uint256 limit, bool liquidatable)",
   "event WithdrawDecision(address indexed user, uint256 indexed reqId, bool release, uint256 debt, uint256 limitAfter)",
   "event SeizeSent(address indexed user, address indexed liquidator, uint256 indexed liqId, uint256 amount)",
+  "event ProtectionSent(address indexed user, uint64 indexed seq, uint256 debt, uint256 limit, uint256 shield)",
+]);
+
+/** Upgraded ClearingHouse appends `shield` to accounts(); kept separate so older deployments still decode. */
+export const chShieldAbi = parseAbi([
+  "function accounts(address user) view returns (uint256 collateral, uint256 pending, uint256 debt, uint256 limit, uint64 seq, bool liquidatable, bool tracked, uint256 shield)",
 ]);
 
 export const payableAbi = parseAbi(["function debt(address target) view returns (uint256)"]);
@@ -65,4 +78,5 @@ export const Kind = {
   Debt: 5,
   LimitApplied: 6,
   Liquidated: 7,
+  Shield: 8,
 } as const;

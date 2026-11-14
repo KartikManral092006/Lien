@@ -1,6 +1,6 @@
 import { marketAbi, vaultAbi } from "./abi.js";
 import { COLL_UNIT, DEBT_UNIT, dep, PRICE_UNIT } from "./config.js";
-import { flowDeposit, flowLiquidation, flowPrice, flowWithdraw, position, repayAll, user, waitNotLiquidatable } from "./flows.js";
+import { ensureShield, flowDeposit, flowLiquidation, flowPrice, flowProtection, flowWithdraw, position, repayAll, shieldSupported, user, waitNotLiquidatable, withdrawShieldAll } from "./flows.js";
 import { appendRun, fmtUnits, pollUntil, printFlow, read, send, type FlowResult } from "./util.js";
 
 const runId = `demo-${Date.now()}`;
@@ -60,6 +60,27 @@ async function main() {
   console.log("\n[6] Cleanup: repay and restore price");
   await repayAll();
   record(await flowPrice(runId, START_PRICE));
+  await show("After cleanup");
+
+  if (await shieldSupported()) {
+    console.log("\n[7] Auto-protection: borrow to the limit, set aside a 300 USDC shield, then WETH drops 20%");
+    const avail = await read<bigint>("unichain", dep.unichain.market, marketAbi, "availableCredit", [user]);
+    if (avail > 0n) {
+      await send("unichain", { address: dep.unichain.market, abi: marketAbi, functionName: "borrow", args: [avail] });
+      await pollUntil("borrow visible on Unichain", async () => ((await position()).debt >= avail ? true : undefined), 30_000);
+    }
+    await ensureShield(300n * DEBT_UNIT);
+    await show("Borrowed to the limit, shield set");
+    record(await flowProtection(runId, (START_PRICE * 80n) / 100n));
+    await show("After protection (never liquidatable)");
+
+    console.log("\n[8] Cleanup: take the shield back, repay, restore price");
+    await withdrawShieldAll();
+    await repayAll();
+    record(await flowPrice(runId, START_PRICE));
+  } else {
+    console.log("\n(Auto-protection skipped: the deployed CreditMarket predates shields. Redeploy to include it.)");
+  }
   await show("End");
   console.log(`\nAll timings appended to results/runs.jsonl (run ${runId}). Run "npm run analyze" for percentiles.`);
 }

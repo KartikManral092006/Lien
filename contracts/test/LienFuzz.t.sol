@@ -6,6 +6,8 @@ import {LienHarness} from "./utils/LienHarness.sol";
 contract LienFuzzTest is LienHarness {
     address[3] internal actors;
     uint256[] internal openReqs;
+    uint256 internal shieldFunded;
+    uint256 internal shieldWithdrawn;
 
     function setUp() public override {
         super.setUp();
@@ -71,6 +73,82 @@ contract LienFuzzTest is LienHarness {
             _checkSolvency();
         }
         _checkNoStuckWithdrawals();
+    }
+
+    /// Prices move, shields are funded and pulled, liquidators act, and events and callbacks land in
+    /// random order. Shields must never be lent out, and once everything settles no account may be
+    /// left past the protection trigger with shield money still unused.
+    function testFuzz_priceMovesWithShieldsProtectionNeverSleeps(uint256 seed) public {
+        for (uint256 i = 0; i < 3; i++) {
+            _deposit(actors[i], 1e18);
+        }
+        _settleAll();
+        for (uint256 i = 0; i < 3; i++) {
+            _borrow(actors[i], market.availableCredit(actors[i]));
+        }
+
+        address liquidator = makeAddr("liquidator");
+        for (uint256 i = 0; i < 80; i++) {
+            uint256 r = uint256(keccak256(abi.encode(seed, i)));
+            address u = actors[(r >> 8) % 3];
+            uint256 action = r % 12;
+
+            if (action == 0) {
+                _setPrice(1_200e8 + (r >> 16) % 1_200e8); // $1,200 .. $2,400
+            } else if (action == 1) {
+                uint256 amt = 1e6 + (r >> 16) % 600e6;
+                _fundShield(u, amt);
+                shieldFunded += amt;
+            } else if (action == 2) {
+                uint256 s = market.shieldOf(u);
+                if (s > 0) {
+                    uint256 amt = 1 + (r >> 16) % s;
+                    _withdrawShield(u, amt);
+                    shieldWithdrawn += amt;
+                }
+            } else if (action == 3) {
+                uint256 avail = market.availableCredit(u);
+                if (avail > 0) _borrow(u, 1 + (r >> 16) % avail);
+            } else if (action == 4) {
+                uint256 d = market.debtOf(u);
+                if (d > 0) _repay(u, 1 + (r >> 16) % d);
+            } else if (action == 5) {
+                if (market.liquidatable(u)) _liquidate(liquidator, u, market.debtOf(u));
+            } else if (action == 6) {
+                _deposit(u, 0.01e18 + (r >> 16) % 0.5e18);
+            } else if (action == 7) {
+                uint256 free = vault.freeCollateralOf(u);
+                if (free > 0) _requestWithdraw(u, 1 + (r >> 16) % free);
+            } else if (action == 8) {
+                _deliverBase();
+            } else if (action == 9) {
+                _deliverUni();
+            } else {
+                if (cbQ.length > 0) _deliverCallback((r >> 16) % cbQ.length);
+            }
+            _checkShieldAccounting();
+        }
+
+        _settleAll();
+        _checkShieldAccounting();
+        for (uint256 i = 0; i < 3; i++) {
+            address u = actors[i];
+            (,, uint256 d,,,,, uint256 s) = ch.accounts(u);
+            assertEq(d, market.debtOf(u), "ledger debt matches market");
+            assertEq(s, market.shieldOf(u), "ledger shield matches market");
+            assertFalse(ch.needsProtection(u), "settled account left past trigger with unused shield");
+            assertEq(market.liquidatable(u), ch.isUnhealthy(u), "liquidation flag matches health");
+        }
+        _checkNoStuckWithdrawals();
+    }
+
+    function _checkShieldAccounting() internal view {
+        uint256 sum;
+        for (uint256 i = 0; i < 3; i++) {
+            sum += market.shieldOf(actors[i]);
+        }
+        assertEq(market.totalShield(), sum, "shield total matches balances");
+        assertGe(usdc.balanceOf(address(market)), market.totalShield(), "shield money never lent out");
     }
 
     function _cancelSome(uint256 r) internal {
