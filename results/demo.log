@@ -1,96 +1,51 @@
+Lien demo, run demo-1794661726781 (2026-11-14T13:08:57.730Z)
 
-> demo
-> tsx src/demo.ts
+Rebuilt from results/runs.jsonl: the demo records every leg (tx hash, block, block timestamp and the
+moment the bot observed it) there, but did not save its console output for this run. Only recorded
+data appears below; account balances printed between steps are not part of the record.
 
-Lien demo for 0xe26C810E1185f023B8394d061ab59452E19e739C
-Resetting the demo account to a clean state...
+Deployment (with auto-protection):
+  ClearingHouse    Lasna     0xb52397CC590D8aB36cCEFffdEbcb9e87c27ebDC0
+  CollateralVault  Base      0x841203412954a70A7ac2888D31d12a6b97b1369A
+  MockPriceFeed    Base      0x34f608cC436Ec16cf236356c0Bd7786809ea1B75
+  CreditMarket     Unichain  0x2C2a8a207D76362EB86c67e3a4b6f5CC556C5ea6
 
-price_to_limit  total 6.90 s observed, 2 s by block timestamps
-  +  2.24 s  base     price update (origin)        https://sepolia.basescan.org/tx/0x07f7742345c55ac746f9c22a583f7fe7a1c9b1aa3bdd0795e2d5931d952d0bfc
-  +  1.86 s  lasna    ClearingHouse re-prices      https://lasna.reactscan.net/tx/0x535522259723da2cae5cb66b453525be4cff824b598d047e3d56d4d3d1de9fc6
-  +  2.81 s  unichain limit updated                https://sepolia.uniscan.xyz/tx/0x8a8334cf44597642e5851e4a47a9135513aea46a360c6bbfc82a88869f251239
+deposit_to_credit  total 6.29 s observed, 2 s by block timestamps
+  +  2.11 s  base     deposit (origin)                         https://sepolia.basescan.org/tx/0x90c62c60f523f905e8815008e86f03a127046bd5f5c538a3c1bedf85230ecff5
+  +  1.92 s  lasna    ClearingHouse react                      https://lasna.reactscan.net/tx/0xc38894a2f9c2108b104044cd48904829fb7a76351dcf3107bbfcccebf260d926
+  +  2.26 s  unichain credit applied (callback)                https://sepolia.uniscan.xyz/tx/0xd56e04e93839f83baa5f38a559f92eca08198c5aa0b26a0c54d53c67393690b6
 
-withdraw_two_phase  total 9.46 s observed, 4 s by block timestamps
-  +  2.47 s  base     requestWithdraw (origin)     https://sepolia.basescan.org/tx/0x32e4ee888d1f41f08cbb218ef44863e134fdf355e355790fef7563ad1e5536c0
-  +  2.00 s  lasna    phase 1: lower credit        https://lasna.reactscan.net/tx/0xd01b8a8f276e351b52942bb91f115a8808eb4b2872675a6532fb631871ef7e32
-  +  2.76 s  unichain limit applied + debt snapshot https://sepolia.uniscan.xyz/tx/0xf02bcda9783e934be493fcff24f96fe380fe3ecf1d5e80ab26c0790adff52e6e
-  +  1.18 s  lasna    phase 2: decide              https://lasna.reactscan.net/tx/0xba6441b51e19ce2b69a3c0c8462c2dfaff7db4777e9987b89be408ff00d811f8
-  +  1.05 s  base     collateral released          https://sepolia.basescan.org/tx/0x46a6be7e68c5a27ee553c74401b48f88a9e2000df218c674cf3d37a4ca40ffe7
+withdraw_two_phase  total 9.91 s observed, 5 s by block timestamps
+  +  2.18 s  base     requestWithdraw (origin)                 https://sepolia.basescan.org/tx/0x163f51cb6ab54f3bff4243d586433bd196c9d05fef95bef2b682227829ed12de
+  +  3.72 s  lasna    phase 1: lower credit                    https://lasna.reactscan.net/tx/0x1a98337be0275399a493de488409c5b84cf6b6d34063c3d4bfc21106709e66e2
+  +  2.22 s  unichain limit applied + debt snapshot            https://sepolia.uniscan.xyz/tx/0x10474ea53261373523085ea9f0db2d201a8c19f60d7d5fd4180f5edcc07769ed
+  +  0.70 s  lasna    phase 2: decide                          https://lasna.reactscan.net/tx/0x348e5199d1afd3419783216f04886d6195a54515fc03beb68f17ee41a58e831e
+  +  1.10 s  base     collateral released                      https://sepolia.basescan.org/tx/0xf567c8061527102fc8d4ab048d28da6ccf1b729c78b0e4d6cd5550a9662b7887
 
-=== Start
-  collateral on Base   0.0000 WETH  (pending 0.0000)
-  debt on Unichain     0.00 USDC   limit 0.00 USDC
-  price                2000.00 USD   health ∞
+price_to_limit  total 7.28 s observed, 3 s by block timestamps
+  +  2.33 s  base     price update (origin)                    https://sepolia.basescan.org/tx/0xe552cc56ae7d16cf60057485804e4a9f00d2b5a27bf9ea98d3aa630a634f0827
+  +  1.90 s  lasna    ClearingHouse re-prices                  https://lasna.reactscan.net/tx/0x8cf2433fe31310cd50d530a7020b2c2faa444c5c9fd375848e516e84f061937e
+  +  3.06 s  unichain flagged liquidatable                     https://sepolia.uniscan.xyz/tx/0x2f9533ad7141caf2a88072d77acbf17ad074b88e6411ab3b6277c8a3434dfa23
 
-[1] Deposit 1 WETH on Base -> credit appears on Unichain
+liquidation_cross_chain  total 6.62 s observed, 2 s by block timestamps
+  +  1.76 s  unichain liquidator repays (origin)               https://sepolia.uniscan.xyz/tx/0xc57f8b25e77d9ad16a1e50a03568e6a1acd95dfe62ff51cde27b73b6e4de2161
+  +  3.77 s  lasna    ClearingHouse computes seizure           https://lasna.reactscan.net/tx/0x9501bb9343cb5c21c0b89ec23b4a78e4782c8857e1eb7efab00f98bfbc133302
+  +  1.08 s  base     collateral paid to liquidator            https://sepolia.basescan.org/tx/0x19777ad1bb6e67d23655cb8cdd379c908463401fb29875e4c9afa453d8606a88
 
-deposit_to_credit  total 7.17 s observed, 2 s by block timestamps
-  +  2.13 s  base     deposit (origin)             https://sepolia.basescan.org/tx/0xfabb9008d6b3e358f9f6b6517e996e9a471d0c1d1b0a9f3322a36b5cb82a6f3d
-  +  2.31 s  lasna    ClearingHouse react          https://lasna.reactscan.net/tx/0x8cb394968e290f30a0399ae508909e0517b068cc2f6493a3b12147676d48ffeb
-  +  2.72 s  unichain credit applied (callback)    https://sepolia.uniscan.xyz/tx/0x043c33ec7a88f05465e8e5c5fa8cc49b82d4ec19f829593bceba48dea68eccf0
+price_to_limit  total 5.93 s observed, 2 s by block timestamps
+  +  2.23 s  base     price update (origin)                    https://sepolia.basescan.org/tx/0xbd48c70615be5f672681f5fcc6330064dd5c9a8bb6d1b51d9b93866479245815
+  +  1.21 s  lasna    ClearingHouse re-prices                  https://lasna.reactscan.net/tx/0xe70ecef26c86e65c96eed6869cf2867148be06386eb68850f8dd959ec2475839
+  +  2.49 s  unichain limit updated                            https://sepolia.uniscan.xyz/tx/0x51401ce6e10675dca562b4e2e65bf9763e80df379bb0e09a55d145288b7f2b18
 
-=== After deposit
-  collateral on Base   1.0000 WETH  (pending 0.0000)
-  debt on Unichain     0.00 USDC   limit 1400.00 USDC
-  price                2000.00 USD   health ∞
+protection  total 6.68 s observed, 2 s by block timestamps
+  +  2.31 s  base     price drop (origin)                      https://sepolia.basescan.org/tx/0x586abb3de771d4d05317f188df19c584745a4bd8cb274ee1dc5f3292abf4cac6
+  +  1.30 s  lasna    ClearingHouse orders protection          https://lasna.reactscan.net/tx/0xd382d6019a2262b45487208a5f8f0b0e6c9b66b641002d983cbbb263a14bb553
+  +  3.07 s  unichain shield repaid debt (callback)            https://sepolia.uniscan.xyz/tx/0xd3150162d243d59f8b892e3971405e1d96ed2db908e6464db11a2f9e15e72f89
 
-[2] Borrow 1,000 USDC on Unichain against collateral that never left Base
-  borrow tx https://sepolia.uniscan.xyz/tx/0x5aeca9455ebc2e9174d1da74fb9fe8aeb332551f9d331fdf9bcdc08dd33cbaea
+price_to_limit  total 7.36 s observed, 2 s by block timestamps
+  +  2.35 s  base     price update (origin)                    https://sepolia.basescan.org/tx/0xdfc0846715101fcbe79feb3a04a9675749bd6f90739ca9f7d0fca8d1a9e695de
+  +  1.84 s  lasna    ClearingHouse re-prices                  https://lasna.reactscan.net/tx/0x04eb76e8c4626cafec495d070b079311793cf28752866feac69c571f5b866643
+  +  3.17 s  unichain limit updated                            https://sepolia.uniscan.xyz/tx/0x5d72d8d06d43f226ecfc6ef3dede84cf88aaf3e19153235bed9b2aad4d410519
 
-=== After borrow
-  collateral on Base   1.0000 WETH  (pending 0.0000)
-  debt on Unichain     1000.00 USDC   limit 1400.00 USDC
-  price                2000.00 USD   health 1.600
-
-[3] Withdraw 0.2 WETH on Base -> two-phase commit (lower credit first, then release)
-
-withdraw_two_phase  total 9.01 s observed, 4 s by block timestamps
-  +  2.89 s  base     requestWithdraw (origin)     https://sepolia.basescan.org/tx/0x310fd250aaf42547d6ea8aacbe81d230e04770e5fce94331049940b549e30c07
-  +  1.33 s  lasna    phase 1: lower credit        https://lasna.reactscan.net/tx/0x26592e262009f1606e42380425045d3df87b53f7701d9a6e51f1db9d5333f3c2
-  +  3.01 s  unichain limit applied + debt snapshot https://sepolia.uniscan.xyz/tx/0x30b820149dc93cd2e71008992961288c0e653194db1b52e5e577dd191e67ef36
-  +  0.72 s  lasna    phase 2: decide              https://lasna.reactscan.net/tx/0x975ffe4ad4e3277a472c26cf1c507697c19acd7ee6f59a6a010f43e14fa8cc71
-  +  1.05 s  base     collateral released          https://sepolia.basescan.org/tx/0x905d06bb84d9b507dcab27c7a411e2927bde3482605467c4c8439d70e2ded7d8
-
-=== After withdrawal
-  collateral on Base   0.8000 WETH  (pending 0.0000)
-  debt on Unichain     1000.00 USDC   limit 1120.00 USDC
-  price                2000.00 USD   health 1.280
-
-[4] Price crashes 25% on Base -> account flagged liquidatable on Unichain
-
-price_to_limit  total 7.97 s observed, 3 s by block timestamps
-  +  3.03 s  base     price update (origin)        https://sepolia.basescan.org/tx/0x6e41eb937901f492035a260ade0c56e794da296656def059ee108f2161708f57
-  +  2.56 s  lasna    ClearingHouse re-prices      https://lasna.reactscan.net/tx/0x82b0a26c2745eb661f5e8a887d66e8850b689431ea8c32c88dc39de53a6a7c3e
-  +  2.39 s  unichain flagged liquidatable         https://sepolia.uniscan.xyz/tx/0xc1ba88626b7900abfc7470ea79f63c7d9947cf149af9e95dabc11dd3806cceec
-
-=== After crash
-  collateral on Base   0.8000 WETH  (pending 0.0000)
-  debt on Unichain     1000.00 USDC   limit 840.00 USDC
-  price                1500.00 USD   health 0.960   LIQUIDATABLE
-
-[5] Liquidator repays 500 USDC on Unichain -> receives WETH on Base
-  [retrying] block 67794451 on unichain: Block at number "67794451" could not be found.
-
-liquidation_cross_chain  total 8.37 s observed, 2 s by block timestamps
-  +  2.10 s  unichain liquidator repays (origin)   https://sepolia.uniscan.xyz/tx/0xe143f3f327432c9bb633027a0993fc957f393fc20db44057ad5739da9463baee
-  +  5.07 s  lasna    ClearingHouse computes seizure https://lasna.reactscan.net/tx/0x53c16f394327d037296092bd827c881f3459acbfcea3f2fc38c93cdd7b24c823
-  +  1.19 s  base     collateral paid to liquidator https://sepolia.basescan.org/tx/0x403edd2ba3fc9dc6bbc1673acba097c88d17275ed992bf5c2e3c96bab811a873
-
-=== After liquidation
-  collateral on Base   0.4500 WETH  (pending 0.0000)
-  debt on Unichain     500.00 USDC   limit 472.50 USDC
-  price                1500.00 USD   health 1.080
-
-[6] Cleanup: repay and restore price
-
-price_to_limit  total 7.00 s observed, 2 s by block timestamps
-  +  2.47 s  base     price update (origin)        https://sepolia.basescan.org/tx/0x8199e3f9c57e898f16273af067f36427f7f08b99540c572e7cc8897075ef79a4
-  +  1.86 s  lasna    ClearingHouse re-prices      https://lasna.reactscan.net/tx/0xea91a4e682ca0a612cff51e41d517dc3c8a6edcb4008e427b7aaa10baad8fa11
-  +  2.67 s  unichain limit updated                https://sepolia.uniscan.xyz/tx/0x782b180150c1f0680cff7d7922ed307c4896e5fc868ead931a1a5574b1f55f58
-
-=== End
-  collateral on Base   0.4500 WETH  (pending 0.0000)
-  debt on Unichain     0.00 USDC   limit 630.00 USDC
-  price                2000.00 USD   health ∞
-
-All timings appended to results/runs.jsonl (run demo-1794646814062). Run "npm run analyze" for percentiles.
+Shield callback decoded (Unichain tx 0xd315…2f89): Protected(user 0xe26C…739C, seq 6, repaid 126 USDC,
+debt 504 USDC, shield left 174 USDC); limit applied 504 USDC, liquidatable = false.

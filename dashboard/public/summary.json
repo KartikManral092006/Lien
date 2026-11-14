@@ -1,9 +1,9 @@
 {
-  "generatedAt": "2026-11-14T10:01:07.438Z",
+  "generatedAt": "2026-11-14T13:13:43.281Z",
   "flows": {
     "deposit_to_credit": {
-      "n": 5,
-      "p50": 6366,
+      "n": 6,
+      "p50": 6290,
       "p90": 7561,
       "p95": 7561,
       "max": 7561,
@@ -11,42 +11,42 @@
       "legs": [
         {
           "name": "base: deposit (origin)",
-          "p50": 2132,
+          "p50": 2112,
           "p95": 2773
         },
         {
           "name": "lasna: ClearingHouse react",
-          "p50": 2240,
+          "p50": 1919,
           "p95": 2493
         },
         {
           "name": "unichain: credit applied (callback)",
-          "p50": 2408,
+          "p50": 2295,
           "p95": 2722
         }
       ]
     },
     "withdraw_two_phase": {
-      "n": 9,
+      "n": 10,
       "p50": 9434,
-      "p90": 11501,
+      "p90": 9911,
       "p95": 11501,
       "max": 11501,
       "failures": 0,
       "legs": [
         {
           "name": "base: requestWithdraw (origin)",
-          "p50": 2293,
+          "p50": 2258,
           "p95": 3623
         },
         {
           "name": "lasna: phase 1: lower credit",
           "p50": 1854,
-          "p95": 2993
+          "p95": 3717
         },
         {
           "name": "unichain: limit applied + debt snapshot",
-          "p50": 2938,
+          "p50": 2897,
           "p95": 3253
         },
         {
@@ -62,8 +62,8 @@
       ]
     },
     "price_to_limit": {
-      "n": 10,
-      "p50": 6721,
+      "n": 13,
+      "p50": 6904,
       "p90": 7975,
       "p95": 8242,
       "max": 8242,
@@ -71,7 +71,7 @@
       "legs": [
         {
           "name": "base: price update (origin)",
-          "p50": 2236,
+          "p50": 2240,
           "p95": 3026
         },
         {
@@ -81,14 +81,14 @@
         },
         {
           "name": "unichain: flagged liquidatable",
-          "p50": 2672,
+          "p50": 2806,
           "p95": 3179
         }
       ]
     },
     "liquidation_cross_chain": {
-      "n": 1,
-      "p50": 8365,
+      "n": 2,
+      "p50": 6615,
       "p90": 8365,
       "p95": 8365,
       "max": 8365,
@@ -96,18 +96,43 @@
       "legs": [
         {
           "name": "unichain: liquidator repays (origin)",
-          "p50": 2104,
+          "p50": 1763,
           "p95": 2104
         },
         {
           "name": "lasna: ClearingHouse computes seizure",
-          "p50": 5069,
+          "p50": 3770,
           "p95": 5069
         },
         {
           "name": "base: collateral paid to liquidator",
-          "p50": 1192,
+          "p50": 1082,
           "p95": 1192
+        }
+      ]
+    },
+    "protection": {
+      "n": 1,
+      "p50": 6684,
+      "p90": 6684,
+      "p95": 6684,
+      "max": 6684,
+      "failures": 0,
+      "legs": [
+        {
+          "name": "base: price drop (origin)",
+          "p50": 2312,
+          "p95": 2312
+        },
+        {
+          "name": "lasna: ClearingHouse orders protection",
+          "p50": 1304,
+          "p95": 1304
+        },
+        {
+          "name": "unichain: shield repaid debt (callback)",
+          "p50": 3068,
+          "p95": 3068
         }
       ]
     }

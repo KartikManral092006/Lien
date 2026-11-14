@@ -2,9 +2,16 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+
+# Settings given on the command line (e.g. CH_FUNDING=2.5ether ./scripts/deploy.sh) win over .env.
+OVERRIDES=()
+for v in CH_FUNDING CALLBACK_FUNDING VERIFY CH_ADDRESS INITIAL_PRICE LIQUIDITY WETH_MINT_CAP; do
+  if [[ -n "${!v+x}" ]]; then OVERRIDES+=("$v=${!v}"); fi
+done
 set -a
 source "$ROOT/.env"
 set +a
+for kv in ${OVERRIDES[@]+"${OVERRIDES[@]}"}; do export "$kv"; done
 
 : "${PRIVATE_KEY:?set PRIVATE_KEY in .env}"
 : "${BASE_RPC:?set BASE_RPC in .env}"

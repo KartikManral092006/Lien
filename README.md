@@ -14,7 +14,7 @@ Built for the Reactive Omni Buildathon, track **Every Second Counts**.
 
 | Criterion | Where to look |
 |---|---|
-| **Execution** | [Full-loop transactions](#full-loop-transactions): every flow's origin tx, the ClearingHouse reaction on Lasna, and the callback it triggered, with explorer links. Raw per-leg timings for every run are in [`results/runs.jsonl`](results/runs.jsonl). |
+| **Execution** | [Full-loop transactions](#full-loop-transactions): every flow's origin tx, the ClearingHouse reaction on Lasna, and the callback it triggered, with explorer links, including the [shield repaying a loan on-chain](#auto-protection-the-shield). All six [deployed contracts](#deployed-contracts) are source-verified on Sourcify. Raw per-leg timings for every run are in [`results/runs.jsonl`](results/runs.jsonl). |
 | **Integration** | [What the reactive contract decides](#what-the-reactive-contract-decides). It is the protocol, not a notifier: remove it and no limit, withdrawal, seizure or protection can happen. |
 | **Usefulness** | [Why](#why) and [Auto-protection](#auto-protection-the-shield). |
 | **Craft** | [Tests](#tests) (37, including fuzzing with randomly ordered cross-chain delivery), CI on every push, a scripted [demo](#2-demo-benchmark-race-test), a live [dashboard](#3-dashboard), and [run-it-yourself steps](#run-it-on-testnet). |
@@ -94,7 +94,15 @@ When a price update pushes a user's debt above **75%** of their collateral value
 - **Safe under duplicates and reordering.** The market repays *down to the limit*, never a fixed amount, so a repeated or late callback spends nothing extra.
 - **Conservative when short.** If the shield cannot cover the gap, the account is still flagged.
 
-> **Status:** auto-protection is in this repository and fully tested, but the contracts deployed below are the earlier version without it. It goes on-chain with the next deployment; until then the demo and dashboard detect its absence and skip it.
+**On-chain.** In the demo, a borrower at 630 USDC debt against 0.45 WETH, with a 300 USDC shield, is hit by a price drop from $2,000 to $1,600:
+
+| Leg | Transaction | What it shows |
+|---|---|---|
+| Price drop on Base | [`0x586a…cac6`](https://sepolia.basescan.org/tx/0x586abb3de771d4d05317f188df19c584745a4bd8cb274ee1dc5f3292abf4cac6) | `PriceUpdated` to $1,600 |
+| ClearingHouse on Lasna, +1.3 s | [`0xd382…b553`](https://lasna.reactscan.net/tx/0xd382d6019a2262b45487208a5f8f0b0e6c9b66b641002d983cbbb263a14bb553) | Re-prices the account and sends `sync(..., protect = true)` |
+| Callback on Unichain, +3.1 s | [`0xd315…2f89`](https://sepolia.uniscan.xyz/tx/0xd3150162d243d59f8b892e3971405e1d96ed2db908e6464db11a2f9e15e72f89) | `Protected`: **126 USDC repaid** from the shield, debt 630 → 504 (the new limit, 0.45 × $1,600 × 70%), shield 300 → 174, and the account is **not** flagged for liquidation |
+
+6.7 s from submitting the price update to the repayment on Unichain (one run so far; see [Results](#results)).
 
 ## Tests
 
@@ -119,38 +127,40 @@ Live testnet runs, measured from the first transaction to the final callback (`n
 
 | Flow | Runs | Median | p95 |
 |---|---|---|---|
-| Deposit → credit on Unichain | 5 | 6.4 s | 7.6 s |
-| Two-phase withdrawal (2 loops) | 9 | 9.4 s | 11.5 s |
-| Price drop → new limit on Unichain | 10 | 6.7 s | 8.2 s |
-| Liquidation → seizure on Base | 1 | 8.4 s | 8.4 s |
+| Deposit → credit on Unichain | 6 | 6.3 s | 7.6 s |
+| Two-phase withdrawal (2 loops) | 10 | 9.4 s | 11.5 s |
+| Price drop → new limit on Unichain | 13 | 6.9 s | 8.2 s |
+| Liquidation → seizure on Base | 2 | 6.6 s | 8.4 s |
+| Price drop → shield repays on Unichain | 1 | 6.7 s | 6.7 s |
 
-These are small samples from demo runs, not yet the planned 30-run benchmark. Each total includes the origin transaction's own confirmation (about 2 s) and public-RPC polling.
+These are small samples from demo runs on both deployments (before and after auto-protection; the loop logic is the same), not yet the planned 30-run benchmark. Each total includes the origin transaction's own confirmation (about 2 s) and public-RPC polling.
 
 ## Deployed contracts
 
-Current deployment (the version **before** auto-protection):
+Current deployment, **with auto-protection**. All six contracts are source-verified on Sourcify with an exact match (creation and runtime bytecode):
 
-| Contract | Chain | Address |
-|---|---|---|
-| ClearingHouse | Reactive Lasna (5318007) | [`0x27aaCFF011Eb4c6b1CC73c9C250C317bBaAA8aC6`](https://lasna.reactscan.net/address/0x27aaCFF011Eb4c6b1CC73c9C250C317bBaAA8aC6) |
-| CollateralVault | Base Sepolia (84532) | [`0x7791bd27ea7640e10Eb66196B09f297a0746908b`](https://sepolia.basescan.org/address/0x7791bd27ea7640e10Eb66196B09f297a0746908b) |
-| MockPriceFeed | Base Sepolia (84532) | [`0xCC0d36E8f458b880ee0678d216AD45183962265E`](https://sepolia.basescan.org/address/0xCC0d36E8f458b880ee0678d216AD45183962265E) |
-| Test WETH | Base Sepolia (84532) | [`0x27aaCFF011Eb4c6b1CC73c9C250C317bBaAA8aC6`](https://sepolia.basescan.org/address/0x27aaCFF011Eb4c6b1CC73c9C250C317bBaAA8aC6) |
-| CreditMarket | Unichain Sepolia (1301) | [`0xCC0d36E8f458b880ee0678d216AD45183962265E`](https://sepolia.uniscan.xyz/address/0xCC0d36E8f458b880ee0678d216AD45183962265E) |
-| Test USDC | Unichain Sepolia (1301) | [`0x27aaCFF011Eb4c6b1CC73c9C250C317bBaAA8aC6`](https://sepolia.uniscan.xyz/address/0x27aaCFF011Eb4c6b1CC73c9C250C317bBaAA8aC6) |
+| Contract | Chain | Address | Source |
+|---|---|---|---|
+| ClearingHouse | Reactive Lasna (5318007) | [`0xb52397CC590D8aB36cCEFffdEbcb9e87c27ebDC0`](https://lasna.reactscan.net/address/0xb52397CC590D8aB36cCEFffdEbcb9e87c27ebDC0) | [verified](https://repo.sourcify.dev/5318007/0xb52397CC590D8aB36cCEFffdEbcb9e87c27ebDC0) |
+| CollateralVault | Base Sepolia (84532) | [`0x841203412954a70A7ac2888D31d12a6b97b1369A`](https://sepolia.basescan.org/address/0x841203412954a70A7ac2888D31d12a6b97b1369A) | [verified](https://repo.sourcify.dev/84532/0x841203412954a70A7ac2888D31d12a6b97b1369A) |
+| MockPriceFeed | Base Sepolia (84532) | [`0x34f608cC436Ec16cf236356c0Bd7786809ea1B75`](https://sepolia.basescan.org/address/0x34f608cC436Ec16cf236356c0Bd7786809ea1B75) | [verified](https://repo.sourcify.dev/84532/0x34f608cC436Ec16cf236356c0Bd7786809ea1B75) |
+| Test WETH | Base Sepolia (84532) | [`0x7730D3E461C845ec47fe0f6f0b8a44efCEB5e8aa`](https://sepolia.basescan.org/address/0x7730D3E461C845ec47fe0f6f0b8a44efCEB5e8aa) | [verified](https://repo.sourcify.dev/84532/0x7730D3E461C845ec47fe0f6f0b8a44efCEB5e8aa) |
+| CreditMarket | Unichain Sepolia (1301) | [`0x2C2a8a207D76362EB86c67e3a4b6f5CC556C5ea6`](https://sepolia.uniscan.xyz/address/0x2C2a8a207D76362EB86c67e3a4b6f5CC556C5ea6) | [verified](https://repo.sourcify.dev/1301/0x2C2a8a207D76362EB86c67e3a4b6f5CC556C5ea6) |
+| Test USDC | Unichain Sepolia (1301) | [`0x1dc61edE33987cfB9C1CBc50355F4CE4c07544c4`](https://sepolia.uniscan.xyz/address/0x1dc61edE33987cfB9C1CBc50355F4CE4c07544c4) | [verified](https://repo.sourcify.dev/1301/0x1dc61edE33987cfB9C1CBc50355F4CE4c07544c4) |
 
-Some addresses repeat across chains on purpose: the deployer was a fresh account on every chain, and a `CREATE` address depends only on deployer and nonce. They are different contracts on different chains.
+An earlier deployment without auto-protection (ClearingHouse [`0x27aa…8aC6`](https://lasna.reactscan.net/address/0x27aaCFF011Eb4c6b1CC73c9C250C317bBaAA8aC6)) ran the same flows; its runs stay in `results/runs.jsonl`.
 
 ## Full-loop transactions
 
-From the first `npm run demo` on testnet (origin → Lasna → destination):
+From `npm run demo` on the current deployment (origin → Lasna → destination; run `demo-1794661726781`, full log in [`results/demo.log`](results/demo.log)):
 
 | Flow | Origin | Reactive (Lasna) | Destination |
 |---|---|---|---|
-| Deposit → credit | [Base `0xf456…dae8`](https://sepolia.basescan.org/tx/0xf456754e59380bf813b32856684bac089d85b8e2032a032cde8138b6a5c6dae8) | [`0x4395…d7df`](https://lasna.reactscan.net/tx/0x4395f2c5dec39eb8ad9c75a0604fd23b9b7baf28ea6a8e3a91edf86ee9bcd7df) | [Unichain `0xad68…7d06`](https://sepolia.uniscan.xyz/tx/0xad68f00b352fbfff481439359490a000995b64246e58b885ef61a624e6227d06) |
-| Withdraw: request → lower limit → debt snapshot → decide → release | [Base `0x0121…2a67`](https://sepolia.basescan.org/tx/0x0121d7cc0e9ac191a929f6e42533f544656a54a88559cc4de337f8e67de62a67) | [`0x5fe1…decc`](https://lasna.reactscan.net/tx/0x5fe1aa0df6cefd1c3d7da687fcc1b1308156909682d2c31c25949c4cd141decc), [Unichain `0x96b1…3630`](https://sepolia.uniscan.xyz/tx/0x96b16dc616946c04e530e401ade83cc0869756607248164e740aece794383630), [`0xb747…3255`](https://lasna.reactscan.net/tx/0xb7471a2bb641d8b5e644992ebfeb4894f0a2869801aaa034d07c8b737cae3255) | [Base `0x8035…b454`](https://sepolia.basescan.org/tx/0x8035928b9fc03fa840e1080be742f7911c09f3b5d9366a33987e9b687d9bb454) |
-| Crash → liquidatable | [Base `0x89fb…b2d0`](https://sepolia.basescan.org/tx/0x89fbdd39bd587db6589535908aac770bca98461da9b4c0b21ba049498bead2b0) | [`0x0cf7…f01b`](https://lasna.reactscan.net/tx/0x0cf7cc19e29a66c9f2dfa6e8874fe79a1cad234fd31a27d7f8667154678bf01b) | [Unichain `0xbf3d…c5c6`](https://sepolia.uniscan.xyz/tx/0xbf3da0707b1d196336e75c547ffaa99c98421104b1c5182d48ce471fb1e6b0c5) |
-| Liquidation → seizure | [Unichain `0xdbf9…0688`](https://sepolia.uniscan.xyz/tx/0xdbf993dbd461a23a7002e16a84ca40c38cf8553939cf0ddd63ee469b24360688) | [`0xbc4c…3be9`](https://lasna.reactscan.net/tx/0xbc4c39f5a5a664ebeba134a45aa544bac8bc8c8cd4c419c09154f297243c3be9) | [Base `0x0939…d862`](https://sepolia.basescan.org/tx/0x0939bfbc57881d3daf4f634273f24ba4bebb55a053ed6614e2a9000431a1d862) |
+| Deposit → credit | [Base `0x90c6…cff5`](https://sepolia.basescan.org/tx/0x90c62c60f523f905e8815008e86f03a127046bd5f5c538a3c1bedf85230ecff5) | [`0xc388…d926`](https://lasna.reactscan.net/tx/0xc38894a2f9c2108b104044cd48904829fb7a76351dcf3107bbfcccebf260d926) | [Unichain `0xd56e…90b6`](https://sepolia.uniscan.xyz/tx/0xd56e04e93839f83baa5f38a559f92eca08198c5aa0b26a0c54d53c67393690b6) |
+| Withdraw: request → lower limit → debt snapshot → decide → release | [Base `0x163f…12de`](https://sepolia.basescan.org/tx/0x163f51cb6ab54f3bff4243d586433bd196c9d05fef95bef2b682227829ed12de) | [`0x1a98…66e2`](https://lasna.reactscan.net/tx/0x1a98337be0275399a493de488409c5b84cf6b6d34063c3d4bfc21106709e66e2), [Unichain `0x1047…69ed`](https://sepolia.uniscan.xyz/tx/0x10474ea53261373523085ea9f0db2d201a8c19f60d7d5fd4180f5edcc07769ed), [`0x348e…831e`](https://lasna.reactscan.net/tx/0x348e5199d1afd3419783216f04886d6195a54515fc03beb68f17ee41a58e831e) | [Base `0xf567…7887`](https://sepolia.basescan.org/tx/0xf567c8061527102fc8d4ab048d28da6ccf1b729c78b0e4d6cd5550a9662b7887) |
+| Crash → liquidatable | [Base `0xe552…0f27`](https://sepolia.basescan.org/tx/0xe552cc56ae7d16cf60057485804e4a9f00d2b5a27bf9ea98d3aa630a634f0827) | [`0x8cf2…937e`](https://lasna.reactscan.net/tx/0x8cf2433fe31310cd50d530a7020b2c2faa444c5c9fd375848e516e84f061937e) | [Unichain `0x2f95…fa23`](https://sepolia.uniscan.xyz/tx/0x2f9533ad7141caf2a88072d77acbf17ad074b88e6411ab3b6277c8a3434dfa23) |
+| Liquidation → seizure | [Unichain `0xc57f…2161`](https://sepolia.uniscan.xyz/tx/0xc57f8b25e77d9ad16a1e50a03568e6a1acd95dfe62ff51cde27b73b6e4de2161) | [`0x9501…3302`](https://lasna.reactscan.net/tx/0x9501bb9343cb5c21c0b89ec23b4a78e4782c8857e1eb7efab00f98bfbc133302) | [Base `0x1977…6a88`](https://sepolia.basescan.org/tx/0x19777ad1bb6e67d23655cb8cdd379c908463401fb29875e4c9afa453d8606a88) |
+| Crash → **shield repays** | [Base `0x586a…cac6`](https://sepolia.basescan.org/tx/0x586abb3de771d4d05317f188df19c584745a4bd8cb274ee1dc5f3292abf4cac6) | [`0xd382…b553`](https://lasna.reactscan.net/tx/0xd382d6019a2262b45487208a5f8f0b0e6c9b66b641002d983cbbb263a14bb553) | [Unichain `0xd315…2f89`](https://sepolia.uniscan.xyz/tx/0xd3150162d243d59f8b892e3971405e1d96ed2db908e6464db11a2f9e15e72f89) |
 
 ## Run it on testnet
 
@@ -185,7 +195,8 @@ VERIFY=1 ./scripts/deploy.sh    # deploys, writes deployments.json, then publish
 
 - `CH_ADDRESS=0x… ./scripts/deploy.sh` reuses an existing ClearingHouse, so a deploy that stopped halfway can resume without paying `CH_FUNDING` again.
 - `./scripts/verify.sh` re-runs source verification on its own (Sourcify supports all three chains).
-- `CH_FUNDING` and `CALLBACK_FUNDING` in `.env` set how much each contract starts with. Reactive charges the ClearingHouse for every reaction, so keep an eye on `status.sh`.
+- `CH_FUNDING` and `CALLBACK_FUNDING` in `.env` set how much each contract starts with; values given on the command line win over `.env` (for example `CH_FUNDING=2.5ether CALLBACK_FUNDING=0.0002ether ./scripts/deploy.sh`). Leave room for gas: deploying the ClearingHouse costs about 0.23 lREACT at Lasna's 100 gwei on top of `CH_FUNDING`. Callbacks are cheap: across 25 demo runs the vault and market spent about 0.00001 ETH each.
+- Reactive charges the ClearingHouse for every reaction, so keep an eye on `status.sh`.
 
 ### 2. Demo, benchmark, race test
 
@@ -206,12 +217,15 @@ cd dashboard && npm install && npm run dev      # http://localhost:5173
 npm run build                                    # static site in dashboard/dist, deployable to any static host
 ```
 
+- **Get started:** a checklist (connect, get test WETH, deposit, borrow, add a shield) that ticks itself off from on-chain state.
 - **Position:** a health dial with the liquidation threshold, your liquidation price, and a check that the ledger on Reactive agrees with Base and Unichain.
-- **Actions:** deposit, borrow, repay, withdraw and (on upgraded contracts) shield. Each shows your health *after* the action before you sign, and every transaction is simulated first so a revert is explained in plain words instead of failing in the wallet.
-- **Settlement:** after each action the page follows it across chains (origin → ClearingHouse → callback, and the second loop for withdrawals) and times every leg live.
+- **What if WETH moves:** drag the price and see what the ledger would decide: the new limit, whether the shield steps in and how much it repays, or whether the account becomes liquidatable. It mirrors the contracts' integer maths locally and sends nothing; accounts without debt start on a clearly labelled example loan.
+- **Actions:** deposit, borrow, repay, withdraw and shield. Each shows your health *after* the action before you sign, and every transaction is simulated first so a revert is explained in plain words instead of failing in the wallet.
+- **Settlement:** after each action the page follows it across chains (origin → ClearingHouse → callback, and the second loop for withdrawals) and times every leg live. A docked tracker keeps the timer on screen anywhere on the page and compares each leg with its measured median.
 - **Activity, measured speed and testnet stress tools** (move the test oracle, act as a liquidator), kept apart from borrower actions.
+- **Command menu** (⌘K / Ctrl K): jump to any section, start any action, get test tokens, open a contract on its explorer.
 
-Built with React, Tailwind CSS v4, Radix primitives, Motion, [Magic UI](https://magicui.design) components (MIT), React Three Fiber, RainbowKit + wagmi and TanStack Query. Keyboard accessible, respects reduced motion, works down to phone width. Browser wallets work out of the box; set `VITE_WALLETCONNECT_PROJECT_ID` (see `dashboard/.env.example`) to add mobile wallets.
+Built with React, Tailwind CSS v4, Radix primitives, Motion, [Magic UI](https://magicui.design) components (MIT), React Three Fiber, RainbowKit + wagmi and TanStack Query. Keyboard accessible, respects reduced motion, works down to phone width (Lighthouse accessibility 100 on mobile and desktop). three.js loads only after the page is idle and only on desktops; phones get a still image of the scene. Browser wallets work out of the box; set `VITE_WALLETCONNECT_PROJECT_ID` (see `dashboard/.env.example`) to add mobile wallets.
 
 ## Limitations (stated plainly)
 
