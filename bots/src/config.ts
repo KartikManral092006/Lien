@@ -26,7 +26,8 @@ export const lasna = defineChain({
 export type Deployments = {
   deployer: Address;
   lasna: { chainId: number; clearingHouse: Address; fromBlock: number };
-  base: { chainId: number; vault: Address; feed: Address; weth: Address; callbackProxy: Address; fromBlock: number };
+  /** priceController: present once scripts/deploy-controller.sh has handed it the oracle. */
+  base: { chainId: number; vault: Address; feed: Address; weth: Address; callbackProxy: Address; fromBlock: number; priceController?: Address };
   unichain: { chainId: number; market: Address; usdc: Address; callbackProxy: Address; fromBlock: number };
 };
 

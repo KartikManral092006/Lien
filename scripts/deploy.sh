@@ -5,7 +5,7 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 
 # Settings given on the command line (e.g. CH_FUNDING=2.5ether ./scripts/deploy.sh) win over .env.
 OVERRIDES=()
-for v in CH_FUNDING CALLBACK_FUNDING VERIFY CH_ADDRESS INITIAL_PRICE LIQUIDITY WETH_MINT_CAP; do
+for v in CH_FUNDING CALLBACK_FUNDING VERIFY CH_ADDRESS INITIAL_PRICE LIQUIDITY WETH_MINT_CAP OPEN_PRICE; do
   if [[ -n "${!v+x}" ]]; then OVERRIDES+=("$v=${!v}"); fi
 done
 set -a
@@ -113,6 +113,12 @@ echo "$JSON" > "$ROOT/dashboard/public/deployments.json"
 echo
 echo "Done. Addresses written to deployments.json"
 echo "$JSON"
+
+# Testnet: let anyone move the demo oracle within bounds (OPEN_PRICE=0 keeps it owner-only).
+if [[ "${OPEN_PRICE:-1}" == "1" ]]; then
+  echo
+  VERIFY=0 "$ROOT/scripts/deploy-controller.sh" || echo "Price controller not deployed; the oracle stays owner-only. Re-run scripts/deploy-controller.sh."
+fi
 
 if [[ "${VERIFY:-0}" == "1" ]]; then
   echo

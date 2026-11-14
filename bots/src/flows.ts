@@ -1,14 +1,22 @@
 import { hexToBigInt, maxUint256, parseEventLogs, type Address, type Hex, type WalletClient } from "viem";
-import { chAbi, chShieldAbi, feedAbi, Kind, marketAbi, tokenAbi, vaultAbi } from "./abi.js";
+import { chAbi, chShieldAbi, feedAbi, Kind, marketAbi, priceControllerAbi, tokenAbi, vaultAbi } from "./abi.js";
 import { account, COLL_UNIT, DEBT_UNIT, dep, liquidatorWallet, PRICE_UNIT, pub } from "./config.js";
 import { finish, logScanner, makeLeg, pollUntil, read, send, type FlowResult, type Leg } from "./util.js";
 
 const CH = dep.lasna.clearingHouse;
 const VAULT = dep.base.vault;
 const FEED = dep.base.feed;
+const PRICE_CONTROLLER = dep.base.priceController;
 const WETH = dep.base.weth;
 const MARKET = dep.unichain.market;
 const USDC = dep.unichain.usdc;
+
+/** Moves the test oracle: through the PriceController once it owns the feed, directly otherwise. */
+function setPrice(newPrice: bigint) {
+  return PRICE_CONTROLLER
+    ? send("base", { address: PRICE_CONTROLLER, abi: priceControllerAbi, functionName: "ownerSetPrice", args: [newPrice] })
+    : send("base", { address: FEED, abi: feedAbi, functionName: "setPrice", args: [newPrice] });
+}
 
 export const user = account.address;
 
@@ -113,7 +121,7 @@ export async function flowPrice(runId: string, newPrice: bigint, watchUser: Addr
   const fromL = await lasnaHead();
   const fromU = await pub.unichain.getBlockNumber();
   const start = Date.now();
-  const o = await send("base", { address: FEED, abi: feedAbi, functionName: "setPrice", args: [newPrice] });
+  const o = await setPrice(newPrice);
   const legs: Leg[] = [await makeLeg("price update (origin)", "base", o.hash, o.receipt.blockNumber, o.minedObservedAt)];
 
   const r = await waitReacted(Kind.Price, o.hash, fromL);
@@ -188,7 +196,7 @@ export async function flowProtection(runId: string, newPrice: bigint): Promise<F
   const fromL = await lasnaHead();
   const fromU = await pub.unichain.getBlockNumber();
   const start = Date.now();
-  const o = await send("base", { address: FEED, abi: feedAbi, functionName: "setPrice", args: [newPrice] });
+  const o = await setPrice(newPrice);
   const legs: Leg[] = [await makeLeg("price drop (origin)", "base", o.hash, o.receipt.blockNumber, o.minedObservedAt)];
 
   const r = await waitReacted(Kind.Price, o.hash, fromL);

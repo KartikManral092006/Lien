@@ -1,7 +1,36 @@
 {
   "deployer": "0xe26C810E1185f023B8394d061ab59452E19e739C",
-  "lasna": { "chainId": 5318007, "clearingHouse": "0xb52397CC590D8aB36cCEFffdEbcb9e87c27ebDC0", "fromBlock": 8328905 },
-  "base": { "chainId": 84532, "vault": "0x841203412954a70A7ac2888D31d12a6b97b1369A", "feed": "0x34f608cC436Ec16cf236356c0Bd7786809ea1B75", "weth": "0x7730D3E461C845ec47fe0f6f0b8a44efCEB5e8aa", "callbackProxy": "0x476F44b11F5C942c58f4c8E3d0300E5710743585", "fromBlock": 58698410 },
-  "unichain": { "chainId": 1301, "market": "0x2C2a8a207D76362EB86c67e3a4b6f5CC556C5ea6", "usdc": "0x1dc61edE33987cfB9C1CBc50355F4CE4c07544c4", "callbackProxy": "0x775c9B990ADe401060B78D0e98684eEf8d2466C1", "fromBlock": 67809122 },
-  "params": { "initialPrice": "200000000000", "liquidity": "1000000000000", "wethMintCap": "10000000000000000000" }
+  "lasna": {
+    "chainId": 5318007,
+    "clearingHouse": "0xb52397CC590D8aB36cCEFffdEbcb9e87c27ebDC0",
+    "fromBlock": 8328905
+  },
+  "base": {
+    "chainId": 84532,
+    "vault": "0x841203412954a70A7ac2888D31d12a6b97b1369A",
+    "feed": "0x34f608cC436Ec16cf236356c0Bd7786809ea1B75",
+    "weth": "0x7730D3E461C845ec47fe0f6f0b8a44efCEB5e8aa",
+    "callbackProxy": "0x476F44b11F5C942c58f4c8E3d0300E5710743585",
+    "fromBlock": 58698410,
+    "priceController": "0x7fF0A4fdBd8dCDd3252312022305677545c2aad3"
+  },
+  "unichain": {
+    "chainId": 1301,
+    "market": "0x2C2a8a207D76362EB86c67e3a4b6f5CC556C5ea6",
+    "usdc": "0x1dc61edE33987cfB9C1CBc50355F4CE4c07544c4",
+    "callbackProxy": "0x775c9B990ADe401060B78D0e98684eEf8d2466C1",
+    "fromBlock": 67809122
+  },
+  "params": {
+    "initialPrice": "200000000000",
+    "liquidity": "1000000000000",
+    "wethMintCap": "10000000000000000000",
+    "priceController": {
+      "minPrice": "50000000000",
+      "maxPrice": "500000000000",
+      "maxMoveBps": 3000,
+      "cooldown": 60,
+      "maxMovesPerDay": 30
+    }
+  }
 }

@@ -44,6 +44,14 @@ verify 84532 "$VAULT" src/CollateralVault.sol:CollateralVault "$(cast abi-encode
 verify 1301 "$USDC" src/mocks/MockToken.sol:MockToken "$(cast abi-encode 'constructor(string,string,uint8,uint256)' 'Lien Test USDC' USDC 6 "$LIQ")"
 verify 1301 "$MARKET" src/CreditMarket.sol:CreditMarket "$(cast abi-encode 'constructor(address,address,address)' "$UNI_PROXY" "$CH" "$USDC")"
 
+# The testnet price controller is optional (scripts/deploy-controller.sh).
+PC="$(j d.base.priceController 2>/dev/null || true)"
+if [[ -n "$PC" ]]; then
+  verify 84532 "$PC" src/mocks/PriceController.sol:PriceController "$(cast abi-encode 'constructor(address,uint256,uint256,uint256,uint256,uint256,uint256)' \
+    "$FEED" "$PRICE" "$(j d.params.priceController.minPrice)" "$(j d.params.priceController.maxPrice)" \
+    "$(j d.params.priceController.maxMoveBps)" "$(j d.params.priceController.cooldown)" "$(j d.params.priceController.maxMovesPerDay)")"
+fi
+
 if [[ $failed -gt 0 ]]; then
   echo "$failed contract(s) failed to verify." >&2
   exit 1

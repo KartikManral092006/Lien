@@ -47,7 +47,8 @@ export const explorer = {
 export type Deployments = {
   deployer: Address;
   lasna: { chainId: number; clearingHouse: Address; fromBlock: number };
-  base: { chainId: number; vault: Address; feed: Address; weth: Address; callbackProxy: Address; fromBlock: number };
+  /** priceController: testnet contract that lets anyone move the demo oracle within bounds. */
+  base: { chainId: number; vault: Address; feed: Address; weth: Address; callbackProxy: Address; fromBlock: number; priceController?: Address };
   unichain: { chainId: number; market: Address; usdc: Address; callbackProxy: Address; fromBlock: number };
 };
 
@@ -71,6 +72,21 @@ export const vaultAbi = parseAbi([
   "event Seized(address indexed user, address indexed liquidator, uint256 indexed liqId, uint256 amount, uint256 collateral, uint256 pending)",
   "error ZeroAmount()",
   "error InsufficientFreeCollateral(uint256 requested, uint256 free)",
+]);
+
+export const priceControllerAbi = parseAbi([
+  "function setPrice(uint256 newPrice)",
+  "function resetPrice()",
+  "function status() view returns (uint256 nextMoveAt, uint256 movesLeftToday)",
+  "function minPrice() view returns (uint256)",
+  "function maxPrice() view returns (uint256)",
+  "function maxMoveBps() view returns (uint256)",
+  "function defaultPrice() view returns (uint256)",
+  "error NoChange()",
+  "error OutOfRange(uint256 price, uint256 min, uint256 max)",
+  "error MoveTooLarge(uint256 from, uint256 to, uint256 maxMoveBps)",
+  "error CoolingDown(uint256 nextMoveAt)",
+  "error DailyLimitReached(uint256 maxMovesPerDay)",
 ]);
 
 export const feedAbi = parseAbi([
@@ -154,6 +170,13 @@ export function explainError(e: unknown): { message: string; cancelled: boolean 
   if (err?.code === 4001 || /user rejected|denied|rejected the request/i.test(text)) {
     return { message: "Cancelled in your wallet.", cancelled: true };
   }
+  // EIP-1193 4100: usually the wallet switched to an account that was never connected to this site.
+  if (err?.code === 4100 || err?.walk?.((x: any) => x?.code === 4100) || /not been authorized by the user/i.test(text)) {
+    return {
+      message: "Your wallet has not given this site access to the selected account. In your wallet, connect this account to the site (or disconnect and connect again), then retry.",
+      cancelled: false,
+    };
+  }
   const name: string | undefined = err?.walk?.((x: any) => x?.data?.errorName)?.data?.errorName ?? err?.data?.errorName;
   const args: any[] = err?.walk?.((x: any) => x?.data?.args)?.data?.args ?? [];
   switch (name) {
@@ -173,6 +196,18 @@ export function explainError(e: unknown): { message: string; cancelled: boolean 
       return { message: "Enter an amount above zero.", cancelled: false };
     case "NotOwner":
       return { message: "Only the deployer can move the test oracle.", cancelled: false };
+    case "CoolingDown": {
+      const wait = Math.max(1, Number(args[0]) - Math.floor(Date.now() / 1000));
+      return { message: `Someone just moved the price. Try again in ${wait} s.`, cancelled: false };
+    }
+    case "DailyLimitReached":
+      return { message: `The test price has been moved ${args[0]} times today, the daily limit. It resets at midnight UTC.`, cancelled: false };
+    case "MoveTooLarge":
+      return { message: `Each move can change the price by at most ${Number(args[2]) / 100}%.`, cancelled: false };
+    case "OutOfRange":
+      return { message: `The test price must stay between $${fmt(args[1], PRICE)} and $${fmt(args[2], PRICE)}.`, cancelled: false };
+    case "NoChange":
+      return { message: "The price is already there.", cancelled: false };
     case "MintCapExceeded":
       return { message: "Test tokens have a per-request cap. Ask for a smaller amount.", cancelled: false };
   }

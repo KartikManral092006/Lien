@@ -5,7 +5,7 @@ import { toast } from "sonner";
 import { maxUint256, type Abi, type Address, type Hex } from "viem";
 import { useAccount, useSwitchChain } from "wagmi";
 import { getWalletClient } from "wagmi/actions";
-import { chains, explainError, explorer, pub, tokenAbi, CHAIN_META, type Deployments, type TxChain } from "./chain";
+import { chains, explainError, explorer, pub, short, tokenAbi, CHAIN_META, type Deployments, type TxChain } from "./chain";
 import { snapshotHeads, trackLoop } from "./loop";
 import { wagmiConfig } from "./wallet";
 
@@ -43,6 +43,15 @@ export function useTx(d: Deployments | undefined) {
         await switchChainAsync({ chainId: target.id });
       }
       const wallet = await getWalletClient(wagmiConfig, { chainId: target.id });
+      // The wallet may have switched to an account this site was never given; say so before it refuses to sign.
+      const offered = await wallet.getAddresses();
+      if (!offered.some((a) => a.toLowerCase() === address.toLowerCase())) {
+        throw new Error(
+          offered.length === 0
+            ? "Your wallet is not sharing any account with this site. Use the account button at the top right to disconnect, then connect again."
+            : `This page is connected as ${short(address)}, but your wallet is offering ${short(offered[0])}. Disconnect at the top right and connect again with the account you want to use.`,
+        );
+      }
       const list = typeof steps === "function" ? await steps() : steps;
       const heads = opts.track ? await snapshotHeads() : undefined;
       const startedAt = Date.now();

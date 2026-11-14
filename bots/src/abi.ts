@@ -28,6 +28,9 @@ export const feedAbi = parseAbi([
   "event PriceUpdated(uint256 price, uint256 timestamp)",
 ]);
 
+/** Testnet PriceController: owns the feed; the deployer (bots) uses the unthrottled ownerSetPrice. */
+export const priceControllerAbi = parseAbi(["function ownerSetPrice(uint256 newPrice)"]);
+
 export const marketAbi = parseAbi([
   "function borrow(uint256 amount)",
   "function repay(address user, uint256 amount)",
