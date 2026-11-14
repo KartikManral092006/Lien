@@ -200,8 +200,29 @@ export function describe(name: string, a: Record<string, any>): string {
   }
 }
 
-// How far back the activity feed looks. Base Sepolia makes ~5 blocks/s, so 1,500 blocks is about 5 minutes.
-const WINDOW: Record<ChainKey, bigint> = { base: 1500n, unichain: 900n, lasna: 600n };
+// How far back the activity feed looks, as time. Block times differ per chain and change (Base Sepolia
+// moved to 200 ms blocks), so the block range is derived from each chain's measured block time.
+const LOOKBACK_MS = 5 * 60_000;
+const MAX_LOOKBACK_BLOCKS = 3_000n; // bounds RPC load if a chain's block time is ever misread
+const SAMPLE = 200n;
+const blockMs = new Map<ChainKey, { ms: number; at: number }>();
+
+/** Average milliseconds per block over the last 200 blocks, from block timestamps; refreshed each minute. */
+async function msPerBlock(chain: ChainKey, head: bigint) {
+  const hit = blockMs.get(chain);
+  if (hit && Date.now() - hit.at < 60_000) return hit.ms;
+  const [a, b] = await Promise.all([pub[chain].getBlock({ blockNumber: head }), pub[chain].getBlock({ blockNumber: head > SAMPLE ? head - SAMPLE : 0n })]);
+  const blocks = Number(a.number - b.number);
+  // Timestamps are whole seconds, so average over many blocks; fall back to 1 s if the sample is degenerate.
+  const ms = blocks > 0 && a.timestamp > b.timestamp ? (Number(a.timestamp - b.timestamp) * 1000) / blocks : 1000;
+  blockMs.set(chain, { ms, at: Date.now() });
+  return ms;
+}
+
+async function lookbackBlocks(chain: ChainKey, head: bigint) {
+  const n = BigInt(Math.ceil(LOOKBACK_MS / (await msPerBlock(chain, head))));
+  return n > MAX_LOOKBACK_BLOCKS ? MAX_LOOKBACK_BLOCKS : n;
+}
 
 export function useActivity(d: Deployments | undefined) {
   return useQuery({
@@ -220,9 +241,11 @@ export function useActivity(d: Deployments | undefined) {
       const keys: ChainKey[] = ["base", "unichain", "lasna"];
       const heads = await Promise.all(keys.map((k) => pub[k].getBlockNumber()));
       const head = Object.fromEntries(keys.map((k, i) => [k, heads[i]])) as Record<ChainKey, bigint>;
+      const spans = await Promise.all(keys.map((k) => lookbackBlocks(k, head[k])));
+      const span = Object.fromEntries(keys.map((k, i) => [k, spans[i]])) as Record<ChainKey, bigint>;
       const batches = await Promise.all(
         sources.map(async (s) => {
-          const lo = head[s.chain] > WINDOW[s.chain] ? head[s.chain] - WINDOW[s.chain] : 0n;
+          const lo = head[s.chain] > span[s.chain] ? head[s.chain] - span[s.chain] : 0n;
           const from = lo > BigInt(s.from) ? lo : BigInt(s.from);
           const logs = await getLogsWindowed(s.chain, { address: s.address, abi: s.abi }, from, head[s.chain]);
           return logs.map((l) => ({ ...l, chain: s.chain }));
