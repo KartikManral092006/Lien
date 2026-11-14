@@ -1,6 +1,7 @@
 import { motion, useReducedMotion } from "motion/react";
 import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
+import { Spotlight } from "./fx/Spotlight";
 
 /**
  * The boxy grid. The page lives inside one frame with vertical rails; every section is a band whose top
@@ -8,7 +9,12 @@ import { cn } from "@/lib/utils";
  */
 
 export function Frame({ children }: { children: ReactNode }) {
-  return <div className="relative mx-auto max-w-[1280px] border-x border-line">{children}</div>;
+  return (
+    <div className="relative mx-auto max-w-[1280px] border-x border-line">
+      <Spotlight />
+      {children}
+    </div>
+  );
 }
 
 function Cross({ className }: { className?: string }) {

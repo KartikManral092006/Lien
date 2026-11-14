@@ -41,8 +41,16 @@ export function Activity({ items, error, who }: { items?: Item[]; error?: boolea
               initial={{ opacity: 0, scale: 0.96, y: -6 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               transition={{ type: "spring", stiffness: 350, damping: 40 }}
-              className="grid grid-cols-[0.5rem_1fr_auto] items-center gap-4 border-b border-line px-5 py-3.5 text-sm transition-colors hover:bg-white/[0.02] sm:grid-cols-[0.5rem_9rem_1fr_4.5rem_auto] sm:px-8"
+              className="relative grid grid-cols-[0.5rem_1fr_auto] items-center gap-4 border-b border-line px-5 py-3.5 text-sm transition-colors hover:bg-white/[0.02] sm:grid-cols-[0.5rem_9rem_1fr_4.5rem_auto] sm:px-8"
             >
+              {/* A wash of the chain's colour that sweeps across a new row once, then fades. */}
+              <motion.span
+                aria-hidden
+                className={cx("pointer-events-none absolute inset-0 origin-left", chainBg[it.chain])}
+                initial={{ opacity: 0.16, scaleX: 0 }}
+                animate={{ opacity: 0, scaleX: 1 }}
+                transition={{ duration: 1.4, ease: [0.16, 1, 0.3, 1] }}
+              />
               <span className={cx("size-2", chainBg[it.chain])} aria-hidden />
               <span className="hidden font-mono text-xs text-muted sm:block">{CHAIN_META[it.chain].name}</span>
               <span className="min-w-0 truncate">{it.detail}</span>

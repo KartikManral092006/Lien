@@ -70,13 +70,13 @@ function PriceLever({ d, p, tx, canAct }: { d: Deployments; p?: Position; tx: Re
   return (
     <div className="mt-4">
       <div className="flex flex-wrap items-center gap-2">
-        <Button tone="danger" size="sm" disabled={blocked || !p || tooLow(10n)} busy={tx.busy === "Drop WETH 10%"} onClick={() => move("Drop WETH 10%", 10n)} title="A borrower at the limit lands in the shield zone">
+        <Button tone="danger" size="sm" disabled={blocked || !p || tooLow(10n)} busy={tx.busy === "Drop WETH 10%"} done={tx.done === "Drop WETH 10%"} onClick={() => move("Drop WETH 10%", 10n)} title="A borrower at the limit lands in the shield zone">
           Drop WETH 10%
         </Button>
-        <Button tone="danger" size="sm" disabled={blocked || !p || tooLow(25n)} busy={tx.busy === "Drop WETH 25%"} onClick={() => move("Drop WETH 25%", 25n)} title="An unshielded borrower at the limit becomes liquidatable">
+        <Button tone="danger" size="sm" disabled={blocked || !p || tooLow(25n)} busy={tx.busy === "Drop WETH 25%"} done={tx.done === "Drop WETH 25%"} onClick={() => move("Drop WETH 25%", 25n)} title="An unshielded borrower at the limit becomes liquidatable">
           Drop WETH 25%
         </Button>
-        <Button tone="quiet" size="sm" disabled={blocked || atDefault} busy={tx.busy === "Price reset"} onClick={reset}>
+        <Button tone="quiet" size="sm" disabled={blocked || atDefault} busy={tx.busy === "Price reset"} done={tx.done === "Price reset"} onClick={reset}>
           Reset to ${fmt(l?.open ? l.defaultPrice : 2_000n * 10n ** 8n, PRICE)}
         </Button>
         {p && <span className="text-sm text-muted">Now ${fmt(p.price, PRICE)}</span>}
@@ -159,7 +159,7 @@ export function StressTools({ d, p, tx, who, canAct }: { d: Deployments; p?: Pos
           onChange={(e) => setAmount(e.target.value.replace(/[^0-9.]/g, ""))}
           className="h-9 border border-line bg-raised px-3 text-sm outline-none focus:border-chain-base"
         />
-        <Button tone="quiet" size="sm" type="submit" className="h-9" disabled={locked || repay === 0n} busy={tx.busy === "Liquidate"}>
+        <Button tone="quiet" size="sm" type="submit" className="h-9" disabled={locked || repay === 0n} busy={tx.busy === "Liquidate"} done={tx.done === "Liquidate"}>
           Liquidate
         </Button>
       </form>

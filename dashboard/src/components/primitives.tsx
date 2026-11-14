@@ -1,7 +1,9 @@
 import * as RTooltip from "@radix-ui/react-tooltip";
 import { Loader2 } from "lucide-react";
+import { AnimatePresence, motion } from "motion/react";
 import type { ButtonHTMLAttributes, ReactNode } from "react";
 import { explorer, short, type ChainKey } from "../lib/chain";
+import { useScramble } from "./fx/useScramble";
 
 export function cx(...c: (string | false | null | undefined)[]) {
   return c.filter(Boolean).join(" ");
@@ -13,27 +15,82 @@ export const chainBg: Record<ChainKey, string> = { base: "bg-chain-base", lasna:
 type BtnProps = ButtonHTMLAttributes<HTMLButtonElement> & {
   tone?: "primary" | "quiet" | "danger" | "ghost";
   busy?: boolean;
+  /** The action this button sent just confirmed: show a check for a moment. */
+  done?: boolean;
   size?: "md" | "sm";
 };
 
-export function Button({ tone = "primary", busy, size = "md", className, children, disabled, ...rest }: BtnProps) {
+/**
+ * Three states, one button: idle, busy (a light sweeps across while the wallet and chain work), and done
+ * (a check draws itself). Labels slide between states instead of swapping in place.
+ */
+export function Button({ tone = "primary", busy, done, size = "md", className, children, disabled, ...rest }: BtnProps) {
+  const state = done ? "done" : busy ? "busy" : "idle";
   return (
     <button
       {...rest}
       disabled={disabled || busy}
+      aria-busy={busy || undefined}
       className={cx(
-        "inline-flex items-center justify-center gap-2 font-medium transition-[background,color,box-shadow,transform] active:translate-y-px disabled:cursor-not-allowed disabled:opacity-40",
+        "relative inline-flex items-center justify-center gap-2 overflow-hidden font-medium transition-[background,color,box-shadow,transform,border-color] duration-300 active:scale-[0.98]",
+        busy ? "cursor-wait" : "disabled:cursor-not-allowed disabled:opacity-40",
         size === "md" ? "h-11 px-5 text-sm" : "h-8 px-3 text-xs",
-        tone === "primary" && "bg-ink text-paper hover:bg-white",
-        tone === "quiet" && "border border-line-strong bg-white/[0.03] text-ink backdrop-blur hover:bg-white/[0.07]",
-        tone === "danger" && "border border-danger/30 bg-danger/10 text-danger hover:bg-danger/15",
-        tone === "ghost" && "text-muted hover:bg-white/[0.05] hover:text-ink",
+        done
+          ? "border border-safe/50 bg-safe/15 text-safe"
+          : [
+              tone === "primary" && "bg-ink text-paper hover:bg-white hover:shadow-[0_0_0_4px_rgb(238_242_248/0.08)]",
+              tone === "quiet" && "border border-line-strong bg-white/[0.03] text-ink backdrop-blur hover:border-white/30 hover:bg-white/[0.07]",
+              tone === "danger" && "border border-danger/30 bg-danger/10 text-danger hover:border-danger/60 hover:bg-danger/15",
+              tone === "ghost" && "text-muted hover:bg-white/[0.05] hover:text-ink",
+            ]
+              .filter(Boolean)
+              .join(" "),
         className,
       )}
     >
-      {busy && <Loader2 className="size-4 animate-spin" aria-hidden />}
-      {children}
+      {busy && (
+        <span aria-hidden className="btn-sweep pointer-events-none absolute inset-0 bg-gradient-to-r from-transparent via-current to-transparent opacity-20" />
+      )}
+      <AnimatePresence mode="popLayout" initial={false}>
+        <motion.span
+          key={state}
+          className="relative inline-flex items-center gap-2"
+          initial={{ y: 14, opacity: 0, filter: "blur(4px)" }}
+          animate={{ y: 0, opacity: 1, filter: "blur(0px)" }}
+          exit={{ y: -14, opacity: 0, filter: "blur(4px)" }}
+          transition={{ type: "spring", stiffness: 520, damping: 34 }}
+        >
+          {done ? (
+            <>
+              <DrawnCheck />
+              Confirmed
+            </>
+          ) : (
+            <>
+              {busy && <Loader2 className="size-4 animate-spin" aria-hidden />}
+              {children}
+            </>
+          )}
+        </motion.span>
+      </AnimatePresence>
     </button>
+  );
+}
+
+function DrawnCheck() {
+  return (
+    <svg viewBox="0 0 16 16" className="size-4" aria-hidden>
+      <motion.path
+        d="M3 8.5l3.2 3.2L13 4.8"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="square"
+        initial={{ pathLength: 0 }}
+        animate={{ pathLength: 1 }}
+        transition={{ duration: 0.45, ease: [0.65, 0, 0.35, 1], delay: 0.1 }}
+      />
+    </svg>
   );
 }
 
@@ -55,15 +112,20 @@ export function Hint({ text, children }: { text: string; children: ReactNode }) 
   );
 }
 
+/** Explorer link whose hash resolves out of noise when it first appears. */
 export function TxLink({ chain, hash, className }: { chain: ChainKey; hash: string; className?: string }) {
+  const label = short(hash);
+  const shown = useScramble(label);
   return (
     <a
       href={explorer.tx[chain] + hash}
       target="_blank"
       rel="noreferrer"
+      aria-label={`Transaction ${label}`}
+      title={hash}
       className={cx("font-mono text-xs text-muted underline-offset-4 hover:text-ink hover:underline", className)}
     >
-      {short(hash)}
+      {shown}
     </a>
   );
 }

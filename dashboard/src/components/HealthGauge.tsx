@@ -1,4 +1,5 @@
 import { motion, useReducedMotion } from "motion/react";
+import { Num } from "./fx/Num";
 
 const MAX = 2.5; // health shown on the dial runs from 0 to 2.5; anything above pins to the end
 
@@ -52,7 +53,7 @@ export function HealthGauge({
       </svg>
       <figcaption className="absolute inset-x-0 bottom-0 text-center">
         <div className={Number.isFinite(health) ? "text-4xl font-bold leading-none tracking-tight" : "text-2xl font-bold leading-none tracking-tight"}>
-          {Number.isFinite(health) ? health.toFixed(2) : "No debt"}
+          {Number.isFinite(health) ? <Num value={Math.min(health, 99.99)} good="up" /> : "No debt"}
         </div>
         <div className="mt-1.5 text-sm font-medium" style={{ color }}>
           {label}

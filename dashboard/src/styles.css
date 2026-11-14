@@ -221,3 +221,34 @@ body {
 .sim-range:focus-visible::-moz-range-thumb {
   box-shadow: 0 0 0 2px var(--focus);
 }
+
+/* Pointer spotlight (components/fx/Spotlight.tsx): a soft glow, and the hairline grid showing through around it. */
+.spotlight {
+  --mx: -999px;
+  --my: -999px;
+}
+.spotlight-glow {
+  background: radial-gradient(560px circle at var(--mx) var(--my), rgb(34 211 238 / 0.06), transparent 45%);
+  mix-blend-mode: screen;
+}
+.spotlight-grid {
+  background-image:
+    linear-gradient(to right, rgb(148 163 184 / 0.09) 1px, transparent 1px),
+    linear-gradient(to bottom, rgb(148 163 184 / 0.09) 1px, transparent 1px);
+  background-size: 32px 32px;
+  -webkit-mask-image: radial-gradient(240px circle at var(--mx) var(--my), #000, transparent 70%);
+  mask-image: radial-gradient(240px circle at var(--mx) var(--my), #000, transparent 70%);
+}
+
+/* Light sweeping across a button while its transaction is in progress. */
+@keyframes btn-sweep {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(100%);
+  }
+}
+.btn-sweep {
+  animation: btn-sweep 1.3s ease-in-out infinite;
+}

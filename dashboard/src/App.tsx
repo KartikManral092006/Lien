@@ -87,7 +87,7 @@ function Dashboard({ d }: { d: Deployments }) {
         <Checklist d={d} p={canAct ? position.data : undefined} tx={tx} shieldSupported={!!shield.data} connected={canAct} />
         <div className="grid lg:grid-cols-[minmax(0,1fr)_460px] *:min-w-0">
           <div className="px-5 py-10 sm:px-8">
-            <Position p={position.data} shieldSupported={!!shield.data} />
+            <Position p={position.data} shieldSupported={!!shield.data} account={who} />
           </div>
           <div className="border-t border-line lg:border-l lg:border-t-0">
             <Actions d={d} p={position.data} tx={tx} shieldSupported={!!shield.data} canAct={canAct} />

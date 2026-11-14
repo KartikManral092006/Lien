@@ -120,7 +120,7 @@ function Deposit({ d, p, tx, canAct }: Props) {
     >
       <AmountField id="dep" label="Deposit collateral on Base" value={v} onChange={setV} unit="WETH" balance={p ? fmt(p.weth, COLL, 4) : undefined} balanceLabel="Wallet" onMax={p ? () => setV(formatUnits(p.weth, COLL)) : undefined} error={err} />
       <Preview p={p} next={next} rows={<Delta label="Borrow limit" from={p ? `${fmt(p.limit, DEBT)} USDC` : "–"} to={nextLimit !== undefined ? `${fmt(nextLimit, DEBT)} USDC` : undefined} tone="good" />} />
-      <Cta canAct={canAct} type="submit" busy={tx.busy === "Deposit"} disabled={!canAct || !amt || !!err || !!tx.busy}>
+      <Cta canAct={canAct} type="submit" busy={tx.busy === "Deposit"} done={tx.done === "Deposit"} disabled={!canAct || !amt || !!err || !!tx.busy}>
         Deposit WETH
       </Cta>
       <TestFaucet label="Get 1 test WETH" onClick={() => tx.run("Get test WETH", "base", [{ address: d.base.weth, abi: tokenAbi as Abi, functionName: "mint", args: [tx.address, 10n ** 18n] }], { done: "Received 1 test WETH" })} disabled={!canAct || !!tx.busy} />
@@ -143,7 +143,7 @@ function Borrow({ d, p, tx, canAct }: Props) {
     >
       <AmountField id="bor" label="Borrow USDC on Unichain" value={v} onChange={setV} unit="USDC" balance={p ? fmt(p.available, DEBT) : undefined} onMax={p ? () => setV(formatUnits(p.available, DEBT)) : undefined} error={err} />
       <Preview p={p} next={next} rows={<Delta label="Debt" from={p ? `${fmt(p.debt, DEBT)} USDC` : "–"} to={next ? `${fmt(next.debt, DEBT)} USDC` : undefined} />} />
-      <Cta canAct={canAct} type="submit" busy={tx.busy === "Borrow"} disabled={!canAct || !amt || !!err || !!tx.busy}>
+      <Cta canAct={canAct} type="submit" busy={tx.busy === "Borrow"} done={tx.done === "Borrow"} disabled={!canAct || !amt || !!err || !!tx.busy}>
         Borrow USDC
       </Cta>
       <p className="mt-3 text-sm text-muted">Your collateral stays on Base. Nothing is bridged.</p>
@@ -170,7 +170,7 @@ function Repay({ d, p, tx, canAct }: Props) {
     >
       <AmountField id="rep" label="Repay debt on Unichain" value={v} onChange={setV} unit="USDC" balance={p ? fmt(p.usdc, DEBT) : undefined} balanceLabel="Wallet" onMax={p ? () => setV(formatUnits(max, DEBT)) : undefined} error={err} />
       <Preview p={p} next={next} rows={<Delta label="Debt" from={p ? `${fmt(p.debt, DEBT)} USDC` : "–"} to={next ? `${fmt(next.debt, DEBT)} USDC` : undefined} tone="good" />} />
-      <Cta canAct={canAct} type="submit" busy={tx.busy === "Repay"} disabled={!canAct || !amt || !!err || !!tx.busy}>
+      <Cta canAct={canAct} type="submit" busy={tx.busy === "Repay"} done={tx.done === "Repay"} disabled={!canAct || !amt || !!err || !!tx.busy}>
         Repay USDC
       </Cta>
       <TestFaucet label="Get 1,000 test USDC" onClick={() => tx.run("Get test USDC", "unichain", [{ address: d.unichain.usdc, abi: tokenAbi as Abi, functionName: "mint", args: [tx.address, 1_000n * 10n ** 6n] }], { done: "Received 1,000 test USDC" })} disabled={!canAct || !!tx.busy} />
@@ -201,7 +201,7 @@ function Withdraw({ d, p, tx, canAct }: Props) {
     >
       <AmountField id="wd" label="Withdraw collateral from Base" value={v} onChange={setV} unit="WETH" balance={p ? fmt(max, COLL, 4) : undefined} balanceLabel="Safe to withdraw" onMax={p ? () => setV(formatUnits(max, COLL)) : undefined} error={err} />
       <Preview p={p} next={next} rows={<Delta label="Borrow limit" from={p ? `${fmt(p.limit, DEBT)} USDC` : "–"} to={next ? `${fmt(limitAfter(next, next.collateral - next.pending), DEBT)} USDC` : undefined} tone="bad" />} />
-      <Cta canAct={canAct} type="submit" busy={tx.busy === "Withdraw"} disabled={!canAct || !amt || !!err || !!tx.busy}>
+      <Cta canAct={canAct} type="submit" busy={tx.busy === "Withdraw"} done={tx.done === "Withdraw"} disabled={!canAct || !amt || !!err || !!tx.busy}>
         Withdraw WETH
       </Cta>
       <p className="mt-3 text-sm text-muted">Settles in two steps: Unichain lowers your limit, then Base releases the WETH. Usually under 10 seconds.</p>
@@ -251,7 +251,7 @@ function Shield({ d, p, tx, canAct }: Props) {
       <div className="mt-5 border border-line bg-raised px-4 py-2">
         <Delta label="Shield" from={`${fmt(shield, DEBT)} USDC`} to={amt ? `${fmt(mode === "add" ? shield + amt : shield > amt ? shield - amt : 0n, DEBT)} USDC` : undefined} tone={mode === "add" ? "good" : "bad"} />
       </div>
-      <Cta canAct={canAct} type="submit" busy={tx.busy === label} disabled={!canAct || !amt || !!err || !!tx.busy}>
+      <Cta canAct={canAct} type="submit" busy={tx.busy === label} done={tx.done === label} disabled={!canAct || !amt || !!err || !!tx.busy}>
         {label}
       </Cta>
       <p className="mt-3 text-sm text-muted">If WETH falls far enough, Lien repays part of your loan from the shield in the same step that would flag you for liquidation. Liquidators never get the chance.</p>

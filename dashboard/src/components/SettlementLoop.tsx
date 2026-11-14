@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
 import { CHAIN_META } from "../lib/chain";
 import { previewLoop, useLoops, type LoopRun } from "../lib/loop";
+import { ChainRail, nextChain } from "./ChainRail";
 import { Band, RevealHeading } from "./grid";
 import { TxLink, chainBg, chainText } from "./primitives";
 
@@ -39,6 +40,19 @@ export function SettlementLoop() {
           <div className="font-mono text-xs text-faint">{run ? run.label : "last action"}</div>
           <div className="mt-2 text-6xl font-semibold tracking-[-0.05em]">{run ? secs((run.status === "running" ? now : run.hops[run.hops.length - 1].at) - run.startedAt) : "0.0s"}</div>
         </div>
+      </div>
+
+      <div className="border-b border-line">
+        <ChainRail run={run} />
+        <p className="border-t border-line px-5 py-3 font-mono text-xs text-faint sm:px-8" aria-live="polite">
+          {!run
+            ? "illustration: the route a deposit takes. Send one to watch yours."
+            : run.status === "running"
+              ? `in flight to ${CHAIN_META[nextChain(run)].name}, ${run.hops.length} ${run.hops.length === 1 ? "transaction" : "transactions"} landed so far`
+              : run.status === "done"
+                ? `settled across ${run.hops.length} transactions in ${secs(run.hops[run.hops.length - 1].at - run.startedAt)}`
+                : "still settling, Reactive may be busy"}
+        </p>
       </div>
 
       {run ? <Legs run={run} now={now} /> : <Idle />}

@@ -21,6 +21,8 @@ export function useTx(d: Deployments | undefined) {
   const { openConnectModal } = useConnectModal();
   const qc = useQueryClient();
   const [busy, setBusy] = useState<string | null>(null);
+  // The label of the action that just confirmed, for about two seconds, so its button can show a check.
+  const [done, setDone] = useState<string | null>(null);
 
   async function approvalFor(chain: TxChain, token: Address, spender: Address, amount: bigint): Promise<Step[]> {
     if (!address) return [];
@@ -70,6 +72,8 @@ export function useTx(d: Deployments | undefined) {
         if (receipt.status !== "success") throw new Error(`The transaction reverted on ${CHAIN_META[chain].name}.`);
         last = hash;
       }
+      setDone(label);
+      setTimeout(() => setDone((cur) => (cur === label ? null : cur)), 2200);
       toast.success(opts.done ?? `${label} confirmed`, {
         id,
         description: opts.track ? "Settling across chains. Watch the loop below." : CHAIN_META[chain].name,
@@ -86,5 +90,5 @@ export function useTx(d: Deployments | undefined) {
     }
   }
 
-  return { run, approvalFor, busy, address };
+  return { run, approvalFor, busy, done, address };
 }
