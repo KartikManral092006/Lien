@@ -8,16 +8,31 @@ Lien lets you deposit collateral on one chain and borrow on another with no brid
 
 Built for the Reactive Omni Buildathon, track **Every Second Counts**.
 
+### In one transaction chain
+
+**WETH drops on Base. About 2 seconds later, by block timestamps, the shield has repaid the loan on Unichain, and the account was never liquidatable.** This happened on testnet, and the price was moved by an ordinary browser wallet:
+
+| | Transaction | What happened |
+|---|---|---|
+| 1. A visitor drops the price on **Base** | [`0x9d75…97e1`](https://sepolia.basescan.org/tx/0x9d7549be323311fcc087eb22f5d7a7655e1664203c178e61c2257ccf924797e1) | WETH $2,000 → $1,800 through the public price controller |
+| 2. The ledger on **Reactive Lasna** decides | [`0x965f…8c4b`](https://lasna.reactscan.net/tx/0x965f049a44f99d329ac1b31ead751b2e9be33f09d17e637f9d6bfda051428c4b) | Re-prices the account and orders protection in the same callback that would flag it |
+| 3. The shield repays on **Unichain** | [`0x5a5b…c7c4`](https://sepolia.uniscan.xyz/tx/0x5a5b8da94ddc2c3b52c53cb38dbea4b6b52781460c88a0c9055dbfc96a10c7c4) | 53 USDC repaid from the shield, debt 620 → 567, **not liquidatable** |
+
+- **Three chains, about 2 s block to block.** That is the on-chain median for every single-loop flow across 32 recorded runs (see [Results](#results)), not a best case.
+- **The reactive contract is the protocol.** It holds the only cross-chain ledger and makes every decision that moves money. Remove it and nothing can be borrowed, withdrawn, protected or liquidated.
+- **It is safe under races.** Withdrawals settle in two phases, so withdrawing on Base and borrowing on Unichain at the same instant cannot leave the protocol short. This is covered by tests and fuzzing with randomly ordered cross-chain delivery, and `npm run race` runs the same attack against the live contracts (30-attempt results are being added).
+- **Anyone can reproduce it.** Use the hosted dashboard at **[kartikmanral092006.github.io/Lien](https://kartikmanral092006.github.io/Lien/)**: connect a wallet, borrow, add a shield and press *Drop WETH 10%*.
+
 ---
 
 ## For judges: where each criterion is answered
 
 | Criterion | Where to look |
 |---|---|
-| **Execution** | [Full-loop transactions](#full-loop-transactions): every flow's origin tx, the ClearingHouse reaction on Lasna, and the callback it triggered, with explorer links, including the [shield repaying a loan on-chain](#auto-protection-the-shield). All six [deployed contracts](#deployed-contracts) are source-verified on Sourcify. Raw per-leg timings for every run are in [`results/runs.jsonl`](results/runs.jsonl). |
+| **Execution** | [Full-loop transactions](#full-loop-transactions): every flow's origin tx, the ClearingHouse reaction on Lasna, and the callback it triggered, with explorer links, including the [shield repaying a loan on-chain](#auto-protection-the-shield). All seven [deployed contracts](#deployed-contracts) are source-verified on Sourcify. Raw per-leg timings for every run are in [`results/runs.jsonl`](results/runs.jsonl). |
 | **Integration** | [What the reactive contract decides](#what-the-reactive-contract-decides). It is the protocol, not a notifier: remove it and no limit, withdrawal, seizure or protection can happen. |
 | **Usefulness** | [Why](#why) and [Auto-protection](#auto-protection-the-shield). You can [try the shield yourself](#try-it-yourself): anyone can move the test price. |
-| **Craft** | [Tests](#tests) (49, including fuzzing with randomly ordered cross-chain delivery), CI on every push, a scripted [demo](#2-demo-benchmark-race-test), a live [dashboard](#3-dashboard), and [run-it-yourself steps](#run-it-on-testnet). |
+| **Craft** | [Tests](#tests) (53, including fuzzing with randomly ordered cross-chain delivery), CI on every push, a scripted [demo](#2-demo-benchmark-race-test), a [hosted dashboard](https://kartikmanral092006.github.io/Lien/), [latency measured two ways](#results), and [run-it-yourself steps](#run-it-on-testnet). |
 
 ## Why
 
@@ -72,7 +87,7 @@ Neither chain can do any of this alone: Base does not know the debt, Unichain do
 | **Deposit → credit** | 1 | `Deposited` on Base → ClearingHouse computes `limit = value × LTV` → `sync` on Unichain |
 | **Borrow / repay** | 0 | Local on Unichain, bounded by the synced limit; `DebtUpdated` mirrors debt into the ledger |
 | **Withdraw** | 2 | Two-phase commit, see below |
-| **Price drop → liquidatable** | 1 | `PriceUpdated` on Base → ClearingHouse re-prices every account → `sync(liquidatable = true)` |
+| **Price drop → liquidatable** | 1 | `PriceUpdated` on Base → ClearingHouse re-prices every account → `sync(liquidatable = true)`. Accounts are re-checked in batches of 8: the first inside `react()`, the rest in callbacks the ClearingHouse sends to itself on Lasna, so there is no account cap |
 | **Price drop → shield repays** | 1 | Same price event; for a user past the 75% trigger with a shield, the same `sync` repays debt from the shield instead of flagging the account |
 | **Cross-chain liquidation** | 1 | Liquidator repays on Unichain → `Liquidated` → ClearingHouse → `seize` on Base pays the liquidator in collateral. Nobody bridges |
 
@@ -112,12 +127,12 @@ cd contracts
 forge test -vv
 ```
 
-**49 tests, all passing**: 20 flow tests, 14 protection tests, 12 price-controller tests and 3 fuzz tests (256 runs each in CI). `forge fmt --check`, `forge build`, `forge lint src` and `forge test` run in CI on every push, alongside a type-check of the bots and a production build of the dashboard.
+**53 tests, all passing**: 23 flow tests, 15 protection tests, 12 price-controller tests and 3 fuzz tests (256 runs each in CI). `forge fmt --check`, `forge build`, `forge lint src` and `forge test` run in CI on every push, alongside a type-check of the bots and a production build of the dashboard.
 
 The harness simulates the Reactive Network in Foundry: a mock system contract is etched at `0x8888…8888`, events from the vault, feed and market are queued per chain, and callbacks are delivered with the sender injection the real proxies perform.
 
-- **[`LienFlows.t.sol`](contracts/test/LienFlows.t.sol)**: every flow, the race window, liquidation maths (repay 700 USDC at $1,600 with a 5% bonus = 0.459375 WETH), auth on every callback, stale syncs, duplicate seizures, cancel-then-late-release, the user cap, and a gas check: a price update that re-syncs all 8 users costs about 335k gas in `react()`, well under Reactive's 900k cap (measured against the mock system contract, so treat it as an estimate).
-- **[`LienShield.t.sol`](contracts/test/LienShield.t.sol)**: protection instead of liquidation, no window between flag and protection, partial shields, protection before the liquidation threshold, small moves leaving the shield untouched, rescuing an already-flagged account, duplicate and reordered protections, a shield withdrawn mid-flight, shields never lent out, and protecting all 8 users in one crash (about 376k gas).
+- **[`LienFlows.t.sol`](contracts/test/LienFlows.t.sol)**: every flow, the race window, liquidation maths (repay 700 USDC at $1,600 with a 5% bonus = 0.459375 WETH), auth on every callback, stale syncs, duplicate seizures, cancel-then-late-release, and batched re-pricing with no account cap. With 27 borrowers, a crash flags every one in 4 batches: the first costs about 383k gas inside `react()`, and each continuation about 333k in its own transaction, all under Reactive's 900k cap. These figures are measured against the mock system contract, so treat them as estimates. A second price arriving mid-pass restarts the pass, and an outside call to `continueReprice` can never make an account sync twice.
+- **[`LienShield.t.sol`](contracts/test/LienShield.t.sol)**: protection instead of liquidation, no window between flag and protection, partial shields, protection before the liquidation threshold, small moves leaving the shield untouched, rescuing an already-flagged account, duplicate and reordered protections, a shield withdrawn mid-flight, shields never lent out, protecting a full batch of 8 in one crash (about 423k gas), and protecting shielded accounts that fall beyond the first batch.
 - **[`LienPriceController.t.sol`](contracts/test/LienPriceController.t.sol)**: a stranger's price drop triggers the shield (and, without one, liquidation) through the simulated Reactive flow; the 30% move cap, the $500–$5,000 range, the cooldown measured in seconds rather than blocks (10,000 blocks with no time passing are still refused), the daily cap, reset, owner-only administration and handing the oracle back.
 - **[`LienFuzz.t.sol`](contracts/test/LienFuzz.t.sol)**: three actors act randomly while events and callbacks are delivered in **random order and at random times**. One fuzz asserts `debt ≤ collateral × price × LTV` after every step; one delivers every callback in reverse order; one adds price moves, shields and liquidations and asserts that after settlement no account is left past the trigger with unused shield money and the liquidation flag always matches health.
 
@@ -125,21 +140,27 @@ Writing the protection fuzz also exposed a gap in the original ClearingHouse: it
 
 ## Results
 
-Live testnet runs, measured from the first transaction to the final callback (`npm run analyze`, see [`results/SUMMARY.md`](results/SUMMARY.md)):
+Live testnet runs (`npm run analyze`; see [`results/SUMMARY.md`](results/SUMMARY.md)). Each run is measured on two clocks:
 
-| Flow | Runs | Median | p95 |
-|---|---|---|---|
-| Deposit → credit on Unichain | 6 | 6.3 s | 7.6 s |
-| Two-phase withdrawal (2 loops) | 10 | 9.4 s | 11.5 s |
-| Price drop → new limit on Unichain | 13 | 6.9 s | 8.2 s |
-| Liquidation → seizure on Base | 2 | 6.6 s | 8.4 s |
-| Price drop → shield repays on Unichain | 1 | 6.7 s | 6.7 s |
+- **On-chain:** from the origin transaction's block to the final callback's block, using block timestamps. This is the latency of the protocol itself.
+- **Wall clock:** from submitting the origin transaction until our script saw the final callback. It adds the origin transaction's own confirmation (about 2 s) and public-RPC polling. This is what a user waits.
 
-These are small samples from demo runs on both deployments (before and after auto-protection; the loop logic is the same), not yet the planned 30-run benchmark. Each total includes the origin transaction's own confirmation (about 2 s) and public-RPC polling.
+| Flow | Runs | On-chain median | On-chain p95 | Wall-clock median | Wall-clock p95 |
+|---|---|---|---|---|---|
+| Deposit → credit on Unichain | 6 | **2 s** | 2 s | 6.3 s | 7.6 s |
+| Two-phase withdrawal (2 loops) | 10 | **4 s** | 5 s | 9.4 s | 11.5 s |
+| Price drop → new limit on Unichain | 13 | **2 s** | 3 s | 6.9 s | 8.2 s |
+| Liquidation → seizure on Base | 2 | **2 s** | 2 s | 6.6 s | 8.4 s |
+| Price drop → shield repays on Unichain | 1 | **2 s** | 2 s | 6.7 s | 6.7 s |
+
+- **Precision:** block timestamps on these chains are whole seconds, and the three chains' clocks differ slightly (a Lasna block can carry an earlier timestamp than the Base block it reacted to). On-chain figures are therefore accurate to about ±1 s; [`results/SUMMARY.md`](results/SUMMARY.md) has the per-leg values.
+- **Sample size:** these are small samples from demo runs on both deployments (before and after auto-protection; the loop logic is the same), not yet the planned 30-run benchmark.
 
 ## Deployed contracts
 
-Current deployment, **with auto-protection**. All six contracts are source-verified on Sourcify with an exact match (creation and runtime bytecode):
+Current deployment, **with auto-protection**. All seven contracts are source-verified on Sourcify with an exact match (creation and runtime bytecode).
+
+> This deployment predates batched re-pricing, so its ClearingHouse still tracks at most 8 accounts. The source in this repository has no account cap and passes the tests above. It will be redeployed, and this table updated, together with an on-chain run of `npm run crowd` that re-prices more than one batch.
 
 | Contract | Chain | Address | Source |
 |---|---|---|---|
@@ -229,6 +250,7 @@ cd bots && npm install
 npm run demo                       # deposit → borrow → two-phase withdraw → crash → liquidation → (shield → crash → protected)
 npm run bench -- --n 30 --flows deposit,withdraw,price,liquidation,protection
 npm run race -- --n 30             # withdraw everything on Base and borrow everything on Unichain at the same instant
+npm run crowd -- --n 12            # more accounts than one batch, one price move, every re-check batch recorded
 npm run analyze                    # results/SUMMARY.md and dashboard/public/summary.json
 ```
 
@@ -240,6 +262,8 @@ Every flow records the tx hash and timing of each leg (origin chain → Lasna �
 cd dashboard && npm install && npm run dev      # http://localhost:5173
 npm run build                                    # static site in dashboard/dist, deployable to any static host
 ```
+
+The hosted copy at **[kartikmanral092006.github.io/Lien](https://kartikmanral092006.github.io/Lien/)** is built and deployed by [`.github/workflows/pages.yml`](.github/workflows/pages.yml) on every push that touches the dashboard, the deployment or the results.
 
 - **Get started:** a checklist (connect, get test WETH, deposit, borrow, add a shield) that ticks itself off from on-chain state.
 - **Position:** a health dial with the liquidation threshold, your liquidation price, and a check that the ledger on Reactive agrees with Base and Unichain.
@@ -257,7 +281,7 @@ Built with React, Tailwind CSS v4, Radix primitives, Motion, [Magic UI](https://
 - **Price risk window:** between a price crash and the `sync` landing on Unichain, a user can still borrow against the old limit. The ledger flags the account as soon as that debt reaches it, and the LTV/LT gap (70% / 80%) is the buffer for the window. The results above measure how long it is.
 - **L2 soft finality:** credit is granted when the deposit is seen on Base, before L1 finality. A reorg after that could void a deposit. A production version would bound credit by recent deposits or wait for batch posting.
 - **Mock oracle and tokens**, no interest rates, owner-seeded lending liquidity. On testnet anyone can move the oracle within the controller's limits; a real deployment would use a price feed such as Chainlink.
-- **User cap:** at most 8 tracked users, because one price update re-checks every account inside a single reactive transaction (900k gas cap). Batching with self-callbacks would lift this.
+- **Re-pricing in batches:** a price update re-checks the first 8 accounts inside `react()`. Each further 8 are re-checked in a callback the ClearingHouse sends to itself on Lasna, so later accounts are re-checked one Lasna transaction later per batch. The ledger has no account cap, but very large account counts would need prioritising the riskiest accounts first. `continueReprice` is callable by anyone, because it only runs the next unprocessed batch of the current price, once; the worst a stranger can do is make that batch run sooner.
 - Testnet only, unaudited.
 
 ## Repository
@@ -265,7 +289,7 @@ Built with React, Tailwind CSS v4, Radix primitives, Motion, [Magic UI](https://
 ```
 contracts/   Foundry: src (ClearingHouse, CollateralVault, CreditMarket, mocks), test (flows, shield, fuzz, Reactive simulator)
 scripts/     deploy.sh, deploy-controller.sh, verify.sh, status.sh, fund.sh, faucet.sh
-bots/        TypeScript + viem: demo, bench, race, analyze, status
+bots/        TypeScript + viem: demo, bench, race, crowd, analyze, status
 dashboard/   Vite + React dashboard (Tailwind, Motion, Magic UI, React Three Fiber, RainbowKit)
 results/     runs.jsonl (raw), SUMMARY.md (percentiles), demo.log
 docs/        PLAN.md

@@ -130,15 +130,19 @@ function Stats({ summary }: { summary?: Summary | null }) {
         <Stat i={0} label="Bridges or wrapped tokens" value={<NumberTicker value={0} className="text-ink" />} />
         {flows.map((k, i) => {
           const f = summary!.flows[k];
+          // Block-to-block is the headline (comparable with other on-chain measurements); wall clock stays beside it.
+          const oc = f.onchain;
+          const shown = oc ? oc.p50 : f.p50;
+          const digits = oc ? 0 : 1;
           return (
             <Stat
               key={k}
               i={i + 1}
               label={FLOW_LABEL[k] ?? k}
-              note={`median, ${f.n} testnet runs`}
+              note={oc ? `on-chain median, block to block · ${(f.p50 / 1000).toFixed(1)}\u00a0s wall clock · n=${oc.n}` : `median, ${f.n} testnet runs`}
               value={
                 <>
-                  <NumberTicker value={Number((f.p50 / 1000).toFixed(1))} decimalPlaces={1} className="text-ink" />
+                  <NumberTicker value={Number((shown / 1000).toFixed(digits))} decimalPlaces={digits} className="text-ink" />
                   <span className="ml-1 text-2xl text-faint">s</span>
                 </>
               }
@@ -166,7 +170,13 @@ function Ticker({ summary, price }: { summary?: Summary | null; price?: bigint }
   const items: { key: string; label: string; value: string; chain?: ChainKey }[] = [
     ...(["base", "lasna", "unichain"] as ChainKey[]).map((c) => ({ key: c, label: CHAIN_META[c].name, value: data?.[c] ? `#${data[c]!.number.toLocaleString()}` : "…", chain: c })),
     { key: "px", label: "WETH (test oracle)", value: price !== undefined ? `$${fmt(price, PRICE)}` : "…" },
-    ...(summary ? Object.entries(summary.flows).map(([k, f]) => ({ key: k, label: k.replace(/_/g, " "), value: `${(f.p50 / 1000).toFixed(1)}s median` })) : []),
+    ...(summary
+      ? Object.entries(summary.flows).map(([k, f]) => ({
+          key: k,
+          label: k.replace(/_/g, " "),
+          value: f.onchain ? `${(f.onchain.p50 / 1000).toFixed(0)}s on-chain, ${(f.p50 / 1000).toFixed(1)}s wall clock` : `${(f.p50 / 1000).toFixed(1)}s median`,
+        }))
+      : []),
     { key: "b", label: "bridges", value: "0" },
     { key: "l", label: "ledgers", value: "1" },
   ];

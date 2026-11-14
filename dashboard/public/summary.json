@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-11-14T13:13:43.281Z",
+  "generatedAt": "2026-11-14T17:57:08.125Z",
   "flows": {
     "deposit_to_credit": {
       "n": 6,
@@ -24,7 +24,28 @@
           "p50": 2295,
           "p95": 2722
         }
-      ]
+      ],
+      "onchain": {
+        "n": 6,
+        "p50": 2000,
+        "p90": 2000,
+        "p95": 2000,
+        "max": 2000,
+        "legs": [
+          {
+            "name": "lasna: ClearingHouse react",
+            "p50": -1000,
+            "min": -1000,
+            "max": 0
+          },
+          {
+            "name": "unichain: credit applied (callback)",
+            "p50": 3000,
+            "min": 2000,
+            "max": 3000
+          }
+        ]
+      }
     },
     "withdraw_two_phase": {
       "n": 10,
@@ -59,7 +80,40 @@
           "p50": 1054,
           "p95": 1692
         }
-      ]
+      ],
+      "onchain": {
+        "n": 10,
+        "p50": 4000,
+        "p90": 5000,
+        "p95": 5000,
+        "max": 5000,
+        "legs": [
+          {
+            "name": "lasna: phase 1: lower credit",
+            "p50": 0,
+            "min": -1000,
+            "max": 0
+          },
+          {
+            "name": "unichain: limit applied + debt snapshot",
+            "p50": 3000,
+            "min": 3000,
+            "max": 3000
+          },
+          {
+            "name": "lasna: phase 2: decide",
+            "p50": -1000,
+            "min": -1000,
+            "max": 0
+          },
+          {
+            "name": "base: collateral released",
+            "p50": 3000,
+            "min": 2000,
+            "max": 3000
+          }
+        ]
+      }
     },
     "price_to_limit": {
       "n": 13,
@@ -84,7 +138,28 @@
           "p50": 2806,
           "p95": 3179
         }
-      ]
+      ],
+      "onchain": {
+        "n": 13,
+        "p50": 2000,
+        "p90": 3000,
+        "p95": 3000,
+        "max": 3000,
+        "legs": [
+          {
+            "name": "lasna: ClearingHouse re-prices",
+            "p50": -1000,
+            "min": -1000,
+            "max": 0
+          },
+          {
+            "name": "unichain: flagged liquidatable",
+            "p50": 3000,
+            "min": 2000,
+            "max": 3000
+          }
+        ]
+      }
     },
     "liquidation_cross_chain": {
       "n": 2,
@@ -109,7 +184,28 @@
           "p50": 1082,
           "p95": 1192
         }
-      ]
+      ],
+      "onchain": {
+        "n": 2,
+        "p50": 2000,
+        "p90": 2000,
+        "p95": 2000,
+        "max": 2000,
+        "legs": [
+          {
+            "name": "lasna: ClearingHouse computes seizure",
+            "p50": -1000,
+            "min": -1000,
+            "max": 0
+          },
+          {
+            "name": "base: collateral paid to liquidator",
+            "p50": 2000,
+            "min": 2000,
+            "max": 3000
+          }
+        ]
+      }
     },
     "protection": {
       "n": 1,
@@ -134,7 +230,28 @@
           "p50": 3068,
           "p95": 3068
         }
-      ]
+      ],
+      "onchain": {
+        "n": 1,
+        "p50": 2000,
+        "p90": 2000,
+        "p95": 2000,
+        "max": 2000,
+        "legs": [
+          {
+            "name": "lasna: ClearingHouse orders protection",
+            "p50": -1000,
+            "min": -1000,
+            "max": -1000
+          },
+          {
+            "name": "unichain: shield repaid debt (callback)",
+            "p50": 3000,
+            "min": 3000,
+            "max": 3000
+          }
+        ]
+      }
     }
   }
 }

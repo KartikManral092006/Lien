@@ -271,9 +271,15 @@ export function useActivity(d: Deployments | undefined) {
   });
 }
 
+/** Block-to-block latency from block timestamps (whole seconds on three chains, so about ±1 s). */
+export type OnchainStats = { n: number; p50: number; p90: number; p95: number; max: number; legs?: { name: string; p50: number; min: number; max: number }[] };
+
 export type Summary = {
   generatedAt: string;
-  flows: Record<string, { n: number; p50: number; p90: number; p95: number; max: number; failures: number; legs?: { name: string; p50: number; p95: number }[] }>;
+  flows: Record<
+    string,
+    { n: number; p50: number; p90: number; p95: number; max: number; failures: number; legs?: { name: string; p50: number; p95: number }[]; onchain?: OnchainStats }
+  >;
   race?: { attempts: number; released: number; borrowed: number; both: number; insolvent: number };
 };
 
