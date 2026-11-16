@@ -47,12 +47,12 @@ contract ClearingHouse is AbstractReactive {
     uint256 public constant COLL_UNIT = 1e18;
     uint256 public constant DEBT_UNIT = 1e6;
     uint256 public constant PRICE_UNIT = 1e8;
-    /// Accounts re-checked per transaction after a price update. The first batch runs inside react(); each
-    /// further batch runs in a callback this contract sends to itself on Reactive, a fresh transaction with
-    /// its own gas budget, so the number of accounts is not bounded by one transaction's 900k gas cap.
+    /// Accounts re-checked per transaction after a price update. The first batch runs inside the price's
+    /// react(); each further batch runs in a fresh react(), triggered by a relay through the CreditMarket on
+    /// Unichain (callback out, RepriceRelayed event back), so the number of accounts is not bounded by one
+    /// transaction's 900k gas cap. Lasna does not deliver callbacks a reactive contract sends to itself.
     uint256 public constant BATCH = 8;
     uint64 public constant CALLBACK_GAS = 400_000;
-    uint64 public constant CONTINUE_GAS = 700_000;
 
     uint256 internal immutable T_DEPOSITED = uint256(IVaultEvents.Deposited.selector);
     uint256 internal immutable T_WITHDRAW_REQUESTED = uint256(IVaultEvents.WithdrawRequested.selector);
@@ -63,6 +63,7 @@ contract ClearingHouse is AbstractReactive {
     uint256 internal immutable T_LIMIT_APPLIED = uint256(IMarketEvents.LimitApplied.selector);
     uint256 internal immutable T_LIQUIDATED = uint256(IMarketEvents.Liquidated.selector);
     uint256 internal immutable T_SHIELD = uint256(IMarketEvents.ShieldUpdated.selector);
+    uint256 internal immutable T_REPRICE_RELAYED = uint256(IMarketEvents.RepriceRelayed.selector);
 
     address public owner;
     bool public configured;
@@ -150,6 +151,7 @@ contract ClearingHouse is AbstractReactive {
         _subscribe(unichainChainId_, market_, T_LIMIT_APPLIED);
         _subscribe(unichainChainId_, market_, T_LIQUIDATED);
         _subscribe(unichainChainId_, market_, T_SHIELD);
+        _subscribe(unichainChainId_, market_, T_REPRICE_RELAYED);
     }
 
     function setRiskParams(uint256 ltv, uint256 lt, uint256 bonus, uint256 minIncrease, uint256 protect)
@@ -192,6 +194,7 @@ contract ClearingHouse is AbstractReactive {
             else if (t == T_LIMIT_APPLIED) _onLimitApplied(log_);
             else if (t == T_LIQUIDATED) _onLiquidated(log_);
             else if (t == T_SHIELD) _onShield(log_);
+            else if (t == T_REPRICE_RELAYED) _continueReprice(log_.topic1);
         }
     }
 
@@ -301,11 +304,15 @@ contract ClearingHouse is AbstractReactive {
         _repriceBatch(epoch);
     }
 
-    /// Continues a price update's re-check with the next batch of accounts. Reached through the callback
-    /// this contract sends to itself on Reactive. It is open to anyone because it can only do work the
-    /// ledger owes anyway: the next unprocessed batch of the current pass, once. A call for an older pass,
-    /// or after the pass has finished, does nothing. The first argument is overwritten by Reactive.
+    /// Continues a price update's re-check with the next batch of accounts. Normally reached through the
+    /// relay (RepriceRelayed on Unichain); this public entry is a fallback if a relay is ever lost. It is open
+    /// to anyone because it can only do work the ledger owes anyway: the next unprocessed batch of the
+    /// current pass, once. A call for an older pass, or after the pass has finished, does nothing.
     function continueReprice(address, uint256 epoch) external {
+        _continueReprice(epoch);
+    }
+
+    function _continueReprice(uint256 epoch) internal {
         if (epoch != repriceEpoch) return;
         _repriceBatch(epoch);
     }
@@ -321,9 +328,7 @@ contract ClearingHouse is AbstractReactive {
             _sync(users[i], 0, false);
         }
         if (to < n) {
-            _request(
-                block.chainid, address(this), abi.encodeCall(this.continueReprice, (address(0), epoch)), CONTINUE_GAS
-            );
+            _request(unichainChainId, market, abi.encodeCall(ICreditMarket.relayReprice, (address(0), epoch)));
         }
     }
 

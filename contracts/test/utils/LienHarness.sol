@@ -10,7 +10,7 @@ import {CollateralVault} from "../../src/CollateralVault.sol";
 import {CreditMarket} from "../../src/CreditMarket.sol";
 import {MockToken} from "../../src/mocks/MockToken.sol";
 import {MockPriceFeed} from "../../src/mocks/MockPriceFeed.sol";
-import {IERC20Min} from "../../src/interfaces/ILien.sol";
+import {IERC20Min, IMarketEvents} from "../../src/interfaces/ILien.sol";
 import {MockSystem} from "./MockSystem.sol";
 
 abstract contract LienHarness is Test {
@@ -151,8 +151,7 @@ abstract contract LienHarness is Test {
         assembly {
             mstore(add(p, 36), rvm)
         }
-        // Callbacks to Reactive itself (batch continuations) come from an unspecified sender; the recipient
-        // must not depend on it, so the harness sends them from an arbitrary address.
+        // Any other destination gets an arbitrary sender, so a recipient that depends on it fails here.
         address proxy = c.chainId == BASE ? BASE_PROXY : c.chainId == UNI ? UNI_PROXY : address(0xA11CE);
         vm.prank(proxy);
         uint256 g0 = gasleft();
@@ -163,21 +162,33 @@ abstract contract LienHarness is Test {
         return true;
     }
 
-    /// Index in the callback queue of the next continuation the ClearingHouse sent to itself, if any.
-    function _selfCallbackIndex() internal view returns (bool found, uint256 index) {
+    /// Index in the callback queue of the next re-pricing relay (ClearingHouse -> CreditMarket), if any.
+    function _relayIndex() internal view returns (bool found, uint256 index) {
         for (uint256 i = 0; i < cbQ.length; i++) {
-            if (cbQ[i].chainId == block.chainid && cbQ[i].recipient == address(ch)) return (true, i);
+            if (
+                cbQ[i].chainId == UNI && cbQ[i].recipient == address(market)
+                    && bytes4(cbQ[i].payload) == CreditMarket.relayReprice.selector
+            ) return (true, i);
         }
     }
 
-    /// Delivers one queued self-callback and returns the gas it used, within its own gas limit.
-    function _deliverSelfCallbackMeasured() internal returns (uint256 gasUsed) {
-        (bool found, uint256 i) = _selfCallbackIndex();
-        require(found, "no continuation queued");
+    /// Runs one continuation end to end: delivers the queued relay callback on Unichain (within its gas
+    /// limit), then the RepriceRelayed event it emits back to the ClearingHouse. Returns the gas the
+    /// ClearingHouse's react() used for that batch.
+    function _deliverRelayMeasured() internal returns (uint256 gasUsed) {
+        (bool found, uint256 i) = _relayIndex();
+        require(found, "no relay queued");
         uint64 limit = cbQ[i].gasLimit;
-        _deliverCallback(i); // runs the recipient with exactly `limit` gas and asserts it did not revert
-        gasUsed = lastCallbackGas;
-        assertLe(gasUsed, limit, "continuation exceeded its gas limit");
+        _deliverCallback(i);
+        assertLe(lastCallbackGas, limit, "relay exceeded its gas limit");
+        require(_pendingUni() > 0, "relay emitted nothing");
+        QLog storage q = uniQ[uniQ.length - 1];
+        assertEq(q.topics[0], IMarketEvents.RepriceRelayed.selector);
+        // Deliver earlier Unichain logs first, in order, as the network would.
+        while (uniHead < uniQ.length - 1) {
+            _deliverUni();
+        }
+        gasUsed = _deliverLog(uniQ[uniHead++]);
     }
 
     function _settleAll() internal {

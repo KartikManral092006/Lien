@@ -41,6 +41,8 @@ interface IMarketEvents {
     event SyncIgnored(address indexed user, uint64 seq, uint256 reqId);
     event ShieldUpdated(address indexed user, uint256 shield);
     event Protected(address indexed user, uint64 indexed seq, uint256 repaid, uint256 debt, uint256 shieldLeft);
+    /// Hands a price update's re-check back to the ClearingHouse for its next batch of accounts.
+    event RepriceRelayed(uint256 indexed epoch);
 }
 
 interface ICollateralVault {
@@ -51,4 +53,5 @@ interface ICollateralVault {
 interface ICreditMarket {
     function sync(address rvm, address user, uint256 limit, bool liquidatable, uint64 seq, uint256 reqId, bool protect)
         external;
+    function relayReprice(address rvm, uint256 epoch) external;
 }

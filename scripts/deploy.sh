@@ -5,7 +5,7 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 
 # Settings given on the command line (e.g. CH_FUNDING=2.5ether ./scripts/deploy.sh) win over .env.
 OVERRIDES=()
-for v in CH_FUNDING CALLBACK_FUNDING VERIFY CH_ADDRESS INITIAL_PRICE LIQUIDITY WETH_MINT_CAP OPEN_PRICE; do
+for v in CH_FUNDING CALLBACK_FUNDING VERIFY CH_ADDRESS INITIAL_PRICE LIQUIDITY WETH_MINT_CAP OPEN_PRICE BASE_RPC UNICHAIN_RPC LASNA_RPC; do
   if [[ -n "${!v+x}" ]]; then OVERRIDES+=("$v=${!v}"); fi
 done
 set -a
@@ -31,10 +31,29 @@ WETH_MINT_CAP="${WETH_MINT_CAP:-10000000000000000000}"
 
 # Source verification runs after deployment (scripts/verify.sh), so a verifier outage never aborts a deploy.
 
+# Public RPCs are load-balanced; a node a block behind can hand out a nonce that was just used. A transaction
+# rejected as "nonce too low" never ran, so retrying it is safe.
+retry_nonce() {
+  local out attempt
+  for attempt in 1 2 3 4 5; do
+    if out="$("$@" 2>&1)"; then
+      echo "$out"
+      return 0
+    fi
+    if [[ "$out" == *"nonce too low"* && $attempt -lt 5 ]]; then
+      echo "  stale nonce from the RPC, retrying ($attempt)" >&2
+      sleep 3
+      continue
+    fi
+    echo "$out" >&2
+    return 1
+  done
+}
+
 create() {
   local rpc="$1"; shift
   local out
-  out="$(forge create --broadcast --rpc-url "$rpc" --private-key "$PRIVATE_KEY" "$@")"
+  out="$(retry_nonce forge create --broadcast --rpc-url "$rpc" --private-key "$PRIVATE_KEY" "$@")"
   echo "$out" >&2
   local addr
   addr="$(echo "$out" | awk '/Deployed to:/ {print $3}')"
@@ -47,7 +66,7 @@ create() {
 
 send() {
   local rpc="$1"; shift
-  cast send --rpc-url "$rpc" --private-key "$PRIVATE_KEY" "$@" >/dev/null
+  retry_nonce cast send --rpc-url "$rpc" --private-key "$PRIVATE_KEY" "$@" >/dev/null
 }
 
 cd "$ROOT/contracts"

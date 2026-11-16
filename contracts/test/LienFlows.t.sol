@@ -11,8 +11,8 @@ contract LienFlowsTest is LienHarness {
     address internal alice = makeAddr("alice");
     address internal bob = makeAddr("bob");
 
-    function test_configureCreatesNineSubscriptions() public view {
-        assertEq(sys.subsCount(), 9);
+    function test_configureCreatesTenSubscriptions() public view {
+        assertEq(sys.subsCount(), 10);
         assertTrue(ch.configured());
         assertEq(ch.price(), PRICE0);
     }
@@ -202,10 +202,10 @@ contract LienFlowsTest is LienHarness {
 
         uint256 batches = 1;
         while (true) {
-            (bool found,) = _selfCallbackIndex();
+            (bool found,) = _relayIndex();
             if (!found) break;
-            uint256 g = _deliverSelfCallbackMeasured();
-            emit log_named_uint("continuation gas, one further batch", g);
+            uint256 g = _deliverRelayMeasured();
+            emit log_named_uint("react() gas, one further batch (after the Unichain relay)", g);
             assertLt(g, 900_000);
             batches++;
         }
@@ -292,6 +292,13 @@ contract LienFlowsTest is LienHarness {
         vm.prank(BASE_PROXY);
         vm.expectRevert(abi.encodeWithSelector(AbstractCallback.CallbackNotAuthorized.selector, bob, address(ch)));
         vault.seize(bob, alice, bob, 1, 1e18);
+
+        vm.expectRevert(abi.encodeWithSelector(AbstractPayer.NotAuthorized.selector, address(this), UNI_PROXY));
+        market.relayReprice(address(ch), 1);
+
+        vm.prank(UNI_PROXY);
+        vm.expectRevert(abi.encodeWithSelector(AbstractCallback.CallbackNotAuthorized.selector, bob, address(ch)));
+        market.relayReprice(bob, 1);
     }
 
     function test_staleSyncIsIgnored() public {

@@ -14,7 +14,7 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 
 # Settings given on the command line win over .env.
 OVERRIDES=()
-for v in VERIFY PC_MIN_PRICE PC_MAX_PRICE PC_MAX_MOVE_BPS PC_COOLDOWN PC_MOVES_PER_DAY; do
+for v in VERIFY PC_MIN_PRICE PC_MAX_PRICE PC_MAX_MOVE_BPS PC_COOLDOWN PC_MOVES_PER_DAY BASE_RPC; do
   if [[ -n "${!v+x}" ]]; then OVERRIDES+=("$v=${!v}"); fi
 done
 set -a

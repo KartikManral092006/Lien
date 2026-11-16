@@ -2,24 +2,24 @@
   "deployer": "0xe26C810E1185f023B8394d061ab59452E19e739C",
   "lasna": {
     "chainId": 5318007,
-    "clearingHouse": "0xb52397CC590D8aB36cCEFffdEbcb9e87c27ebDC0",
-    "fromBlock": 8328905
+    "clearingHouse": "0x32BCab0a9199008576ca99a357E3adc5Ea2541c3",
+    "fromBlock": 8503948
   },
   "base": {
     "chainId": 84532,
-    "vault": "0x841203412954a70A7ac2888D31d12a6b97b1369A",
-    "feed": "0x34f608cC436Ec16cf236356c0Bd7786809ea1B75",
-    "weth": "0x7730D3E461C845ec47fe0f6f0b8a44efCEB5e8aa",
+    "vault": "0x958488C803513fA8DFa5CCebd54c6022a17ea1Af",
+    "feed": "0x056920DCD8A133F9De75D25CcA68C3a0A143aF52",
+    "weth": "0x3A0882E6cD99a927c28146242f289e6b8933D4ED",
     "callbackProxy": "0x476F44b11F5C942c58f4c8E3d0300E5710743585",
-    "fromBlock": 58698410,
-    "priceController": "0x7fF0A4fdBd8dCDd3252312022305677545c2aad3"
+    "fromBlock": 59629524,
+    "priceController": "0xE078278A72a17ecCE70bf86fAA94F8618f4a119b"
   },
   "unichain": {
     "chainId": 1301,
-    "market": "0x2C2a8a207D76362EB86c67e3a4b6f5CC556C5ea6",
-    "usdc": "0x1dc61edE33987cfB9C1CBc50355F4CE4c07544c4",
+    "market": "0x126b1c07bb1473770fCb6033A8C5169DF7385beB",
+    "usdc": "0xB14b46F29AC7F46c75E157f1477874c9B56291bc",
     "callbackProxy": "0x775c9B990ADe401060B78D0e98684eEf8d2466C1",
-    "fromBlock": 67809122
+    "fromBlock": 67995345
   },
   "params": {
     "initialPrice": "200000000000",

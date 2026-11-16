@@ -144,6 +144,13 @@ contract CreditMarket is AbstractCallback, IMarketEvents, ICreditMarket {
         emit DebtUpdated(user, -_signed(used), d);
     }
 
+    /// Relays a price update's re-check to its next batch: the ClearingHouse subscribes to the event and
+    /// re-checks the next accounts in a fresh react(). Lasna does not deliver callbacks a reactive contract
+    /// sends to itself, so the continuation takes this round trip through Unichain instead.
+    function relayReprice(address rvm, uint256 epoch) external onlyServiceProvider onlyCallbackSender(rvm) {
+        emit RepriceRelayed(epoch);
+    }
+
     /// Lendable cash: shields belong to their borrowers and are never lent out.
     function availableLiquidity() public view returns (uint256) {
         uint256 bal = asset.balanceOf(address(this));

@@ -1,9 +1,9 @@
 /**
  * Proves on testnet that there is no account cap: brings the ClearingHouse past one batch of accounts,
  * moves the price once, and records every batch of the re-check, including the follow-up batches that run
- * in callbacks the ClearingHouse sends to itself on Lasna.
+ * in fresh reactions, each triggered by a relay through the CreditMarket on Unichain.
  *
- *   npm run crowd                # 12 extra accounts (with the deployer's, more than one batch of 8)
+ *   npm run crowd                # 12 extra accounts (plus the deployer's, if it has a position): more than one batch of 8
  *   npm run crowd -- --n 20
  *
  * The extra accounts are derived from PRIVATE_KEY (testnet only), funded with a little Base Sepolia ETH by
@@ -69,7 +69,9 @@ async function main() {
   }
 
   const before = await read<bigint>("lasna", CH, chAbi, "usersCount");
-  const want = BigInt(n) + 1n;
+  // The deployer counts only if it has its own position on this deployment (a fresh deploy has none).
+  const deployerIn = (await read<bigint>("base", VAULT, vaultAbi, "collateralOf", [wallet.base.account!.address])) > 0n;
+  const want = BigInt(n) + (deployerIn ? 1n : 0n);
   console.log(`\nWaiting for the ledger to track at least ${want} accounts (now ${before})…`);
   await pollUntil("accounts tracked", async () => ((await read<bigint>("lasna", CH, chAbi, "usersCount")) >= want ? true : undefined), 300_000);
   const total = await read<bigint>("lasna", CH, chAbi, "usersCount");
@@ -98,7 +100,7 @@ async function main() {
       for (const l of logs) {
         if (seen.has(l.transactionHash)) continue;
         seen.add(l.transactionHash);
-        const label = l.args.from === 0n ? "batch 1 (inside react)" : `batch ${Number(l.args.from! / batch) + 1} (self-callback)`;
+        const label = l.args.from === 0n ? "batch 1 (inside react)" : `batch ${Number(l.args.from! / batch) + 1} (after relay)`;
         legs.push(await makeLeg(`${label}: accounts ${l.args.from}-${l.args.to! - 1n}`, "lasna", l.transactionHash, l.blockNumber, Date.now()));
         console.log(`  ${label.padEnd(28)} accounts ${l.args.from}–${l.args.to! - 1n} of ${l.args.total}  ${EXPLORER.lasna}${l.transactionHash}`);
         if (l.args.to! > reached) reached = l.args.to!;
@@ -115,7 +117,7 @@ async function main() {
   console.log(
     ok
       ? `\nAll ${total} accounts re-checked in ${legs.length - 1} batches, ${(r.totalBlockMs / 1000).toFixed(0)} s by block timestamps (${(r.totalObservedMs / 1000).toFixed(1)} s observed).`
-      : `\nIncomplete: ${r.note}. If no self-callback batch appeared, the continuation did not run on Lasna; anyone can finish the pass with continueReprice(address,uint256) on the ClearingHouse.`,
+      : `\nIncomplete: ${r.note}. If no relayed batch appeared, check for RepriceRelayed on the CreditMarket (Unichain); anyone can finish the pass with continueReprice(address,uint256) on the ClearingHouse.`,
   );
   if (target !== 2_000n * PRICE_UNIT) {
     console.log("Restoring the price to $2,000.");

@@ -39,7 +39,7 @@ Basic Reactive cross-chain lending examples exist from 2024–25 ("deposit on Se
 4. **Price drop → liquidatable (1 loop).** Base `PriceUpdated` → ClearingHouse re-checks every account → `sync(liquidatable)`.
 5. **Cross-chain liquidation (1 loop).** Liquidator repays on Unichain → ClearingHouse computes `repaid / price × (1 + bonus)` → `seize` on Base pays the liquidator.
 
-Parameters: LTV 70 %, liquidation threshold 80 %, bonus 5 %, close factor 50 %, no account cap (price re-checks run in batches of 8, continued by self-callbacks on Lasna).
+Parameters: LTV 70 %, liquidation threshold 80 %, bonus 5 %, close factor 50 %, no account cap (price re-checks run in batches of 8, each further batch triggered by a relay through the CreditMarket on Unichain, because Lasna did not deliver self-callbacks).
 
 ## 4. Experiments and metrics
 
