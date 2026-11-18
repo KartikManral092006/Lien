@@ -56,6 +56,65 @@ async function syncFromReaction(lasnaTx: Hex, forUser: Address) {
   return syncs.find((s) => s.args.user.toLowerCase() === forUser.toLowerCase());
 }
 
+const indexCache = new Map<string, bigint>();
+
+/** Position of `who` in the ClearingHouse's account list: it decides which re-pricing batch re-checks it. */
+async function userIndex(who: Address): Promise<bigint | undefined> {
+  const key = who.toLowerCase();
+  if (indexCache.has(key)) return indexCache.get(key);
+  const n = await read<bigint>("lasna", CH, chAbi, "usersCount");
+  for (let i = n - 1n; i >= 0n; i--) {
+    const u = await read<Address>("lasna", CH, chAbi, "users", [i]);
+    if (u.toLowerCase() === key) {
+      indexCache.set(key, i);
+      return i;
+    }
+  }
+  return undefined;
+}
+
+/**
+ * Finds the transaction that re-checked `who` after a price update. The first BATCH accounts are re-checked
+ * inside the price's own reaction; later ones in a fresh reaction that a relay through the CreditMarket on
+ * Unichain triggers, one relay per further batch. Returns that reaction and the legs leading to it.
+ */
+async function repriceOf(who: Address, priceReaction: Hex, fromL: bigint, fromU: bigint) {
+  const receipt = await pub.lasna.getTransactionReceipt({ hash: priceReaction });
+  const first = parseEventLogs({ abi: chAbi, logs: receipt.logs, eventName: "RepriceBatch" })[0];
+  const idx = await userIndex(who);
+  if (!first || idx === undefined || idx < first.args.to) return { tx: priceReaction, legs: [] as Leg[] };
+
+  const epoch = first.args.epoch;
+  const batchSize = first.args.to - first.args.from;
+  const relayNo = Number(idx / batchSize); // 1 for the second batch, 2 for the third, ...
+  // The scanner re-reads its last few blocks, so key relays by transaction to count each once.
+  const relays = new Map<Hex, { transactionHash: Hex; blockNumber: bigint }>();
+  const relay = await pollUntil(
+    `relay ${relayNo} of pass ${epoch} on Unichain`,
+    logScanner("unichain", fromU, async (from, to) => {
+      const logs = await pub.unichain.getContractEvents({ address: MARKET, abi: marketAbi, eventName: "RepriceRelayed", args: { epoch }, fromBlock: from, toBlock: to });
+      for (const l of logs) relays.set(l.transactionHash, { transactionHash: l.transactionHash, blockNumber: l.blockNumber });
+      const ordered = [...relays.values()].sort((a, b) => Number(a.blockNumber - b.blockNumber));
+      return ordered.length >= relayNo ? ordered[relayNo - 1] : undefined;
+    }),
+  );
+  const batch = await pollUntil(
+    `re-pricing batch with account ${idx}`,
+    logScanner("lasna", fromL, async (from, to) => {
+      const logs = await pub.lasna.getContractEvents({ address: CH, abi: chAbi, eventName: "RepriceBatch", args: { epoch }, fromBlock: from, toBlock: to });
+      return logs.find((l) => l.args.from! <= idx && idx < l.args.to!);
+    }),
+  );
+  const n = relayNo + 1;
+  return {
+    tx: batch.value.transactionHash,
+    legs: [
+      await makeLeg(`relay ${relayNo} (callback)`, "unichain", relay.value.transactionHash, relay.value.blockNumber, relay.observedAt),
+      await makeLeg(`ClearingHouse re-prices batch ${n}`, "lasna", batch.value.transactionHash, batch.value.blockNumber, batch.observedAt),
+    ],
+  };
+}
+
 async function waitLimitApplied(forUser: Address, seq: bigint, fromBlock: bigint) {
   return pollUntil(
     `LimitApplied seq ${seq} on Unichain`,
@@ -127,12 +186,17 @@ export async function flowPrice(runId: string, newPrice: bigint, watchUser: Addr
   const r = await waitReacted(Kind.Price, o.hash, fromL);
   legs.push(await makeLeg("ClearingHouse re-prices", "lasna", r.value.transactionHash, r.value.blockNumber, r.observedAt));
 
-  const sync = await syncFromReaction(r.value.transactionHash, watchUser);
-  if (!sync) return finish("price_to_limit", runId, start, legs, { newPrice }, "price move too small to resync this user");
+  // Accounts past the first batch are re-checked after a relay; record those runs as their own flow.
+  const rp = await repriceOf(watchUser, r.value.transactionHash, fromL, fromU);
+  legs.push(...rp.legs);
+  const flow = rp.legs.length ? "price_to_limit_relayed" : "price_to_limit";
+
+  const sync = await syncFromReaction(rp.tx, watchUser);
+  if (!sync) return finish(flow, runId, start, legs, { newPrice }, "price move too small to resync this user");
 
   const a = await waitLimitApplied(watchUser, sync.args.seq, fromU);
   legs.push(await makeLeg(a.value.args.liquidatable ? "flagged liquidatable" : "limit updated", "unichain", a.value.transactionHash, a.value.blockNumber, a.observedAt));
-  return finish("price_to_limit", runId, start, legs, { newPrice, liquidatable: a.value.args.liquidatable, limit: a.value.args.limit });
+  return finish(flow, runId, start, legs, { newPrice, liquidatable: a.value.args.liquidatable, limit: a.value.args.limit });
 }
 
 export async function flowLiquidation(runId: string, target: Address, repay: bigint): Promise<FlowResult> {
@@ -184,7 +248,13 @@ export async function ensureShield(amount: bigint) {
 
 export async function withdrawShieldAll() {
   const s = await read<bigint>("unichain", MARKET, marketAbi, "shieldOf", [user]);
-  if (s > 0n) await send("unichain", { address: MARKET, abi: marketAbi, functionName: "withdrawShield", args: [s] });
+  if (s === 0n) return;
+  await send("unichain", { address: MARKET, abi: marketAbi, functionName: "withdrawShield", args: [s] });
+  // Until the ledger sees the shield gone, a price drop would still order protection instead of flagging.
+  await pollUntil("ledger sees the shield withdrawn", async () => {
+    const acc = await read<readonly unknown[]>("lasna", CH, chShieldAbi, "accounts", [user]);
+    return (acc[7] as bigint) === 0n ? true : undefined;
+  });
 }
 
 /**
@@ -200,7 +270,9 @@ export async function flowProtection(runId: string, newPrice: bigint): Promise<F
   const legs: Leg[] = [await makeLeg("price drop (origin)", "base", o.hash, o.receipt.blockNumber, o.minedObservedAt)];
 
   const r = await waitReacted(Kind.Price, o.hash, fromL);
-  legs.push(await makeLeg("ClearingHouse orders protection", "lasna", r.value.transactionHash, r.value.blockNumber, r.observedAt));
+  const rp = await repriceOf(user, r.value.transactionHash, fromL, fromU);
+  legs.push(await makeLeg(rp.legs.length ? "ClearingHouse re-prices" : "ClearingHouse orders protection", "lasna", r.value.transactionHash, r.value.blockNumber, r.observedAt));
+  legs.push(...rp.legs);
 
   const p = await pollUntil(
     `Protected for ${user}`,
@@ -211,7 +283,7 @@ export async function flowProtection(runId: string, newPrice: bigint): Promise<F
   );
   legs.push(await makeLeg("shield repaid debt (callback)", "unichain", p.value.transactionHash, p.value.blockNumber, p.observedAt));
   const flagged = await read<boolean>("unichain", MARKET, marketAbi, "liquidatable", [user]);
-  return finish("protection", runId, start, legs, { newPrice, repaid: p.value.args.repaid, debt: p.value.args.debt, shieldLeft: p.value.args.shieldLeft, flagged });
+  return finish(rp.legs.length ? "protection_relayed" : "protection", runId, start, legs, { newPrice, repaid: p.value.args.repaid, debt: p.value.args.debt, shieldLeft: p.value.args.shieldLeft, flagged });
 }
 
 export async function position(who: Address = user) {

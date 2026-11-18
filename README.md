@@ -18,7 +18,7 @@ Built for the Reactive Omni Buildathon, track **Every Second Counts**.
 | 2. The ledger on **Reactive Lasna** decides | [`0x965f…8c4b`](https://lasna.reactscan.net/tx/0x965f049a44f99d329ac1b31ead751b2e9be33f09d17e637f9d6bfda051428c4b) | Re-prices the account and orders protection in the same callback that would flag it |
 | 3. The shield repays on **Unichain** | [`0x5a5b…c7c4`](https://sepolia.uniscan.xyz/tx/0x5a5b8da94ddc2c3b52c53cb38dbea4b6b52781460c88a0c9055dbfc96a10c7c4) | 53 USDC repaid from the shield, debt 620 → 567, **not liquidatable** |
 
-- **Three chains, about 2 s block to block.** That is the on-chain median for every single-loop flow across 32 recorded runs (see [Results](#results)), not a best case.
+- **Three chains, about 2 s block to block.** That is the on-chain median for every single-loop flow in [Results](#results), not a best case. An account beyond the first 8 re-checked after a price move waits one relay more: about 4 s.
 - **The reactive contract is the protocol.** It holds the only cross-chain ledger and makes every decision that moves money. Remove it and nothing can be borrowed, withdrawn, protected or liquidated.
 - **It is safe under races.** Withdrawals settle in two phases, so withdrawing on Base and borrowing on Unichain at the same instant cannot leave the protocol short. This is covered by tests and fuzzing with randomly ordered cross-chain delivery, and `npm run race` runs the same attack against the live contracts (30-attempt results are being added).
 - **Anyone can reproduce it.** Use the hosted dashboard at **[kartikmanral092006.github.io/Lien](https://kartikmanral092006.github.io/Lien/)**: connect a wallet, borrow, add a shield and press *Drop WETH 10%*.
@@ -147,14 +147,18 @@ Live testnet runs (`npm run analyze`; see [`results/SUMMARY.md`](results/SUMMARY
 
 | Flow | Runs | On-chain median | On-chain p95 | Wall-clock median | Wall-clock p95 |
 |---|---|---|---|---|---|
-| Deposit → credit on Unichain | 6 | **2 s** | 2 s | 6.3 s | 7.6 s |
-| Two-phase withdrawal (2 loops) | 10 | **4 s** | 5 s | 9.4 s | 11.5 s |
+| Deposit → credit on Unichain | 8 | **2 s** | 2 s | 6.3 s | 7.6 s |
+| Two-phase withdrawal (2 loops) | 13 | **4 s** | 5 s | 9.0 s | 11.5 s |
 | Price drop → new limit on Unichain | 13 | **2 s** | 3 s | 6.9 s | 8.2 s |
-| Liquidation → seizure on Base | 2 | **2 s** | 2 s | 6.6 s | 8.4 s |
+| Liquidation → seizure on Base | 4 | **2 s** | 2 s | 6.6 s | 8.4 s |
 | Price drop → shield repays on Unichain | 1 | **2 s** | 2 s | 6.7 s | 6.7 s |
+| Price drop → new limit, account in the second batch (via relay) | 4 | **4 s** | 5 s | 7.6 s | 9.4 s |
+| Price drop → shield repays, account in the second batch (via relay) | 1 | **4 s** | 4 s | 7.1 s | 7.1 s |
+| Price drop → all 12 accounts re-checked (two batches) | 1 | **4 s** | 4 s | 7.1 s | 7.1 s |
 
 - **Precision:** block timestamps on these chains are whole seconds, and the three chains' clocks differ slightly (a Lasna block can carry an earlier timestamp than the Base block it reacted to). On-chain figures are therefore accurate to about ±1 s; [`results/SUMMARY.md`](results/SUMMARY.md) has the per-leg values.
-- **Sample size:** these are small samples from demo runs on earlier deployments (the loop logic is the same), not yet the planned 30-run benchmark.
+- **Sample size:** these are small samples from demo runs across deployments (the loop logic is the same), not yet the planned 30-run benchmark.
+- **Batches:** on the current deployment the demo account is the 13th the ClearingHouse tracks (after the 12 from `npm run crowd`), so its price-driven runs are re-checked in the second batch, after a relay through Unichain. Those runs are listed separately; their extra legs are in [`results/SUMMARY.md`](results/SUMMARY.md).
 
 ### Batched re-pricing on-chain
 
@@ -185,7 +189,7 @@ Current deployment (2026-11-16), **with auto-protection and relayed batch re-pri
 | Test USDC | Unichain Sepolia (1301) | [`0xB14b46F29AC7F46c75E157f1477874c9B56291bc`](https://sepolia.uniscan.xyz/address/0xB14b46F29AC7F46c75E157f1477874c9B56291bc) | [verified](https://repo.sourcify.dev/1301/0xB14b46F29AC7F46c75E157f1477874c9B56291bc) |
 | PriceController | Base Sepolia (84532) | [`0xE078278A72a17ecCE70bf86fAA94F8618f4a119b`](https://sepolia.basescan.org/address/0xE078278A72a17ecCE70bf86fAA94F8618f4a119b) | [verified](https://repo.sourcify.dev/84532/0xE078278A72a17ecCE70bf86fAA94F8618f4a119b) |
 
-Earlier deployments are retired (their gas balances were returned with [`scripts/recover-funds.sh`](scripts/recover-funds.sh)), but their transactions stay on-chain and in `results/runs.jsonl`. The shield rescue at the top of this page and the [full-loop transactions](#full-loop-transactions) below ran on the 2026-11-14 deployment (ClearingHouse [`0xb523…bDC0`](https://lasna.reactscan.net/address/0xb52397CC590D8aB36cCEFffdEbcb9e87c27ebDC0)), whose flows are unchanged in the current code.
+Earlier deployments are retired (their gas balances were returned with [`scripts/recover-funds.sh`](scripts/recover-funds.sh)), but their transactions stay on-chain and in `results/runs.jsonl`. The shield rescue at the top of this page ran on the 2026-11-14 deployment (ClearingHouse [`0xb523…bDC0`](https://lasna.reactscan.net/address/0xb52397CC590D8aB36cCEFffdEbcb9e87c27ebDC0)), whose flows are unchanged in the current code.
 
 ### Try it yourself
 
@@ -195,7 +199,7 @@ Anyone can move the test price, so you can watch Reactive settle a rescue or a l
 2. In **Testnet stress tools**, press **Drop WETH 10%**. Within seconds the ClearingHouse orders the shield to repay part of your loan; the settlement tracker times each leg. **Drop WETH 25%** without a shield makes the account liquidatable instead.
 3. Press **Reset** when you are done.
 
-The price is shared, so a move affects every account. Each public move is limited to 30%, within $500–$5,000, once every 60 seconds and 30 times per UTC day. The limits exist because every move costs the ClearingHouse a reaction on Lasna (about 0.05 lREACT, measured); the owner can tighten them with `setLimits`.
+The price is shared, so a move affects every account. Each public move is limited to 30%, within $500–$5,000, once every 60 seconds and 10 times per UTC day. The limits exist because every move costs the ClearingHouse lREACT on Lasna: one reaction, plus a sync for every account whose limit changes; the owner can tighten them with `setLimits`.
 
 **Tested from the dashboard with a browser wallet.** An ordinary wallet pressed **Drop WETH 10%** on a position borrowed at 620 USDC with a 100 USDC shield:
 
@@ -211,15 +215,17 @@ An earlier deployment without auto-protection (ClearingHouse [`0x27aa…8aC6`](h
 
 ## Full-loop transactions
 
-From `npm run demo` on the 2026-11-14 deployment (origin → Lasna → destination; run `demo-1794661726781`, full log in [`results/demo.log`](results/demo.log)):
+From `npm run demo` on the current deployment (origin → Lasna → destination; run `demo-1794998516023`, full log in [`results/demo.log`](results/demo.log)). This account sits in the second re-pricing batch, so the price-driven rows include the relay through Unichain:
 
-| Flow | Origin | Reactive (Lasna) | Destination |
+| Flow | Origin | Reactive (Lasna), relay | Destination |
 |---|---|---|---|
-| Deposit → credit | [Base `0x90c6…cff5`](https://sepolia.basescan.org/tx/0x90c62c60f523f905e8815008e86f03a127046bd5f5c538a3c1bedf85230ecff5) | [`0xc388…d926`](https://lasna.reactscan.net/tx/0xc38894a2f9c2108b104044cd48904829fb7a76351dcf3107bbfcccebf260d926) | [Unichain `0xd56e…90b6`](https://sepolia.uniscan.xyz/tx/0xd56e04e93839f83baa5f38a559f92eca08198c5aa0b26a0c54d53c67393690b6) |
-| Withdraw: request → lower limit → debt snapshot → decide → release | [Base `0x163f…12de`](https://sepolia.basescan.org/tx/0x163f51cb6ab54f3bff4243d586433bd196c9d05fef95bef2b682227829ed12de) | [`0x1a98…66e2`](https://lasna.reactscan.net/tx/0x1a98337be0275399a493de488409c5b84cf6b6d34063c3d4bfc21106709e66e2), [Unichain `0x1047…69ed`](https://sepolia.uniscan.xyz/tx/0x10474ea53261373523085ea9f0db2d201a8c19f60d7d5fd4180f5edcc07769ed), [`0x348e…831e`](https://lasna.reactscan.net/tx/0x348e5199d1afd3419783216f04886d6195a54515fc03beb68f17ee41a58e831e) | [Base `0xf567…7887`](https://sepolia.basescan.org/tx/0xf567c8061527102fc8d4ab048d28da6ccf1b729c78b0e4d6cd5550a9662b7887) |
-| Crash → liquidatable | [Base `0xe552…0f27`](https://sepolia.basescan.org/tx/0xe552cc56ae7d16cf60057485804e4a9f00d2b5a27bf9ea98d3aa630a634f0827) | [`0x8cf2…937e`](https://lasna.reactscan.net/tx/0x8cf2433fe31310cd50d530a7020b2c2faa444c5c9fd375848e516e84f061937e) | [Unichain `0x2f95…fa23`](https://sepolia.uniscan.xyz/tx/0x2f9533ad7141caf2a88072d77acbf17ad074b88e6411ab3b6277c8a3434dfa23) |
-| Liquidation → seizure | [Unichain `0xc57f…2161`](https://sepolia.uniscan.xyz/tx/0xc57f8b25e77d9ad16a1e50a03568e6a1acd95dfe62ff51cde27b73b6e4de2161) | [`0x9501…3302`](https://lasna.reactscan.net/tx/0x9501bb9343cb5c21c0b89ec23b4a78e4782c8857e1eb7efab00f98bfbc133302) | [Base `0x1977…6a88`](https://sepolia.basescan.org/tx/0x19777ad1bb6e67d23655cb8cdd379c908463401fb29875e4c9afa453d8606a88) |
-| Crash → **shield repays** | [Base `0x586a…cac6`](https://sepolia.basescan.org/tx/0x586abb3de771d4d05317f188df19c584745a4bd8cb274ee1dc5f3292abf4cac6) | [`0xd382…b553`](https://lasna.reactscan.net/tx/0xd382d6019a2262b45487208a5f8f0b0e6c9b66b641002d983cbbb263a14bb553) | [Unichain `0xd315…2f89`](https://sepolia.uniscan.xyz/tx/0xd3150162d243d59f8b892e3971405e1d96ed2db908e6464db11a2f9e15e72f89) |
+| Deposit → credit | [Base `0x4cb2…a120`](https://sepolia.basescan.org/tx/0x4cb2be050b02925174de67e502ef23cf62ce8077740785bc62e33b4d0126a120) | [`0x82a4…51c8`](https://lasna.reactscan.net/tx/0x82a4473a86b9c5b800a6823090d5f19b9bad271e19e4cd46336cf87eb1da51c8) | [Unichain `0xc594…2cf9`](https://sepolia.uniscan.xyz/tx/0xc5949d67b6475a86d0604bf7bbc544c7db87bd517a31c55b9713391bf07e2cf9) |
+| Withdraw: request → lower limit → debt snapshot → decide → release | [Base `0x8e5d…d771`](https://sepolia.basescan.org/tx/0x8e5df8bd13a219ba8e56235b6cb905fe4f4ed2fcacf87096421fe0d6a3d5d771) | [`0x06b3…e6c2`](https://lasna.reactscan.net/tx/0x06b3d49bfa1722237c9b59b0c7a9375e7739343684df6277aac3f60fac9de6c2), [Unichain `0x790e…362d`](https://sepolia.uniscan.xyz/tx/0x790e5b9457bdd618b9dd8a05614745b2a75de33e8ec08a5f275674ce61c8362d), [`0x30fe…21ce`](https://lasna.reactscan.net/tx/0x30fe8637009863d97eab4aadcbfeb71efb136e47c12dec44a014c02dc77321ce) | [Base `0x56b0…9acd`](https://sepolia.basescan.org/tx/0x56b0639d9cddd16ed2d969ca78832daba273a2f775db8fc614f0652f8c6b9acd) |
+| Crash → liquidatable | [Base `0x009e…aede`](https://sepolia.basescan.org/tx/0x009e3824f5b9a8bec237d6e1e0fcde1f82f400f6d92adf393abcef875374aede) | batch 1 [`0xa0e6…237b`](https://lasna.reactscan.net/tx/0xa0e66e378cc6da2c7f665c912fac02641200422db7a3268c6f19688a4265237b), relay [Unichain `0x7ad3…50f7`](https://sepolia.uniscan.xyz/tx/0x7ad388fe4484557877c32c93b061220517bb0a16c883af8ccd4ff7bac8b250f7), batch 2 [`0x85a5…7d6e`](https://lasna.reactscan.net/tx/0x85a5b566768b720b5a6238efaa8f3ed71b6d05c38f130d0f75cf73a5cbd97d6e) | [Unichain `0x38fd…df83`](https://sepolia.uniscan.xyz/tx/0x38fd02738250d2ce2bcf65be821fb856b3db25a54573ed7941be85da4d7ddf83) |
+| Liquidation → seizure | [Unichain `0xf706…5505`](https://sepolia.uniscan.xyz/tx/0xf70664c6315a7643172af366b0fab5cd7b23aa85f4a04cb604676f0c89e45505) | [`0xe1a2…a194`](https://lasna.reactscan.net/tx/0xe1a27c78bf7439ffef9e13e4e7f060ae7ea8f1f9e0232ffe2784564aba88a194) | [Base `0xd3d8…4e67`](https://sepolia.basescan.org/tx/0xd3d8660c6dd4c4bb1b7709fb7da9189e4a6cc395a2fdc56e118759e9efe04e67) |
+| Crash → **shield repays** | [Base `0x7605…0419`](https://sepolia.basescan.org/tx/0x760593516f2dd55ea1e25e35f4ea955c13fc2b17df05f7bdfbf9fa12a9e10419) | batch 1 [`0x9b96…3671`](https://lasna.reactscan.net/tx/0x9b96640ba81badfc2cb74442fc5690235ba149053e0326184ffea97c1ef53671), relay [Unichain `0x630e…ab21`](https://sepolia.uniscan.xyz/tx/0x630e7c6778eebfbcf46cf31ce8f25cfac8ba817592ec3ff2fdb842d16a57ab21), batch 2 [`0x4bc2…c2ee`](https://lasna.reactscan.net/tx/0x4bc21304830435da87253febe5698fb6c1a3689d77496f9289772c4c0998c2ee) | [Unichain `0x6c24…a066`](https://sepolia.uniscan.xyz/tx/0x6c24347ef64813235c8dc297d00284405f2d19dce54c0fba76d06059c813a066) (126 USDC repaid, never liquidatable) |
+
+The same flows on the 2026-11-14 deployment, where the demo account was in the first batch, are in run `demo-1794661726781` in [`results/runs.jsonl`](results/runs.jsonl).
 
 ## Run it on testnet
 

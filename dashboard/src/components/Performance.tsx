@@ -6,6 +6,9 @@ const NAMES: Record<string, string> = {
   price_to_limit: "Price drop to new limit",
   liquidation_cross_chain: "Liquidation to seizure",
   protection: "Price drop to shield repay",
+  price_to_limit_relayed: "Price drop to new limit, second batch (via relay)",
+  protection_relayed: "Price drop to shield repay, second batch (via relay)",
+  reprice_batches: "Price re-check of 12 accounts, all batches",
 };
 
 const s1 = (ms: number) => `${(ms / 1000).toFixed(1)}s`;

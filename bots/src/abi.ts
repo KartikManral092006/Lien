@@ -32,6 +32,7 @@ export const feedAbi = parseAbi([
 export const priceControllerAbi = parseAbi(["function ownerSetPrice(uint256 newPrice)"]);
 
 export const marketAbi = parseAbi([
+  "event RepriceRelayed(uint256 indexed epoch)",
   "function borrow(uint256 amount)",
   "function repay(address user, uint256 amount)",
   "function liquidate(address user, uint256 amount) returns (uint256)",
@@ -56,6 +57,7 @@ export const chAbi = parseAbi([
   "function ltvBps() view returns (uint256)",
   "function ltBps() view returns (uint256)",
   "function usersCount() view returns (uint256)",
+  "function users(uint256 index) view returns (address)",
   "function repriceEpoch() view returns (uint256)",
   "function repriceCursor() view returns (uint256)",
   "function BATCH() view returns (uint256)",

@@ -21,6 +21,8 @@ function record(r: FlowResult) {
 
 async function reset() {
   console.log("Resetting the demo account to a clean state...");
+  // A shield left over from an interrupted run would turn the crash in step 4 into a rescue.
+  if (await shieldSupported()) await withdrawShieldAll();
   await repayAll();
   const p = await position();
   if (p.price !== START_PRICE) record(await flowPrice(runId, START_PRICE));

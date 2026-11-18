@@ -5,10 +5,15 @@
  *
  *   npm run crowd                # 12 extra accounts (plus the deployer's, if it has a position): more than one batch of 8
  *   npm run crowd -- --n 20
+ *   npm run crowd -- --cleanup   # withdraw the crowd's collateral, so later price moves skip those accounts
  *
  * The extra accounts are derived from PRIVATE_KEY (testnet only), funded with a little Base Sepolia ETH by
  * the deployer, and each deposits 0.1 test WETH. Re-running reuses them. Costs: Base gas for the accounts,
  * one ClearingHouse reaction per deposit, and the re-check of every account (paid in lREACT by the contract).
+ *
+ * Every price move re-checks every tracked account, and each account whose limit changes costs a sync
+ * callback and a reaction. An account with no collateral keeps a limit of 0, so it costs almost nothing
+ * once withdrawn: --cleanup brings price moves back to the cost of the accounts that are actually in use.
  */
 import { createWalletClient, encodePacked, formatEther, http, keccak256, maxUint256, parseEther, type Hex } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
@@ -29,19 +34,23 @@ function crowdAccount(i: number) {
   return privateKeyToAccount(key);
 }
 
+/** Tops the account up to cover `gasUnits` at today's Base gas price, with 3x headroom. */
+async function fundGas(address: `0x${string}`, gasUnits: bigint) {
+  const gasPrice = await pub.base.getGasPrice();
+  const need = gasPrice * gasUnits * 3n;
+  const bal = await pub.base.getBalance({ address });
+  if (bal < need) {
+    const hash = await wallet.base.sendTransaction({ to: address, value: need - bal, chain: baseSepolia, account: wallet.base.account! });
+    await pub.base.waitForTransactionReceipt({ hash, pollingInterval: 250 });
+  }
+}
+
 async function ensureDeposited(i: number) {
   const acct = crowdAccount(i);
   const collateral = await read<bigint>("base", VAULT, vaultAbi, "collateralOf", [acct.address]);
   if (collateral >= DEPOSIT) return false;
 
-  // Gas for approve + deposit, with headroom; Base Sepolia gas is cheap but not free.
-  const gasPrice = await pub.base.getGasPrice();
-  const need = gasPrice * 400_000n * 3n;
-  const bal = await pub.base.getBalance({ address: acct.address });
-  if (bal < need) {
-    const hash = await wallet.base.sendTransaction({ to: acct.address, value: need - bal, chain: baseSepolia, account: wallet.base.account! });
-    await pub.base.waitForTransactionReceipt({ hash, pollingInterval: 250 });
-  }
+  await fundGas(acct.address, 400_000n); // approve + deposit
   await send("base", { address: WETH, abi: tokenAbi, functionName: "mint", args: [acct.address, DEPOSIT] });
 
   const w = createWalletClient({ account: acct, chain: baseSepolia, transport: http(process.env.BASE_RPC) });
@@ -56,7 +65,44 @@ function setPrice(p: bigint) {
     : send("base", { address: dep.base.feed, abi: feedAbi, functionName: "setPrice", args: [p] });
 }
 
+async function cleanup() {
+  console.log(`Cleanup: withdrawing the collateral of ${n} crowd accounts, so later price moves skip them`);
+  const waiting: `0x${string}`[] = [];
+  for (let i = 0; i < n; i++) {
+    const acct = crowdAccount(i);
+    const free = await read<bigint>("base", VAULT, vaultAbi, "freeCollateralOf", [acct.address]);
+    const label = `  account ${String(i + 1).padStart(2)} ${acct.address}`;
+    if (free === 0n) {
+      const left = await read<bigint>("base", VAULT, vaultAbi, "collateralOf", [acct.address]);
+      console.log(`${label} ${left === 0n ? "already empty" : "withdrawal already pending"}`);
+      if (left > 0n) waiting.push(acct.address);
+      continue;
+    }
+    await fundGas(acct.address, 150_000n);
+    const w = createWalletClient({ account: acct, chain: baseSepolia, transport: http(process.env.BASE_RPC) });
+    const r = await send("base", { address: VAULT, abi: vaultAbi, functionName: "requestWithdraw", args: [free] }, w);
+    console.log(`${label} requested ${formatEther(free)} WETH  ${EXPLORER.base}${r.hash}`);
+    waiting.push(acct.address);
+  }
+  if (waiting.length === 0) return console.log("\nNothing to withdraw.");
+
+  console.log(`\nWaiting for the ClearingHouse to release ${waiting.length} withdrawals (two-phase, a few seconds each)…`);
+  const left = async () => {
+    let c = 0;
+    for (const a of waiting) if ((await read<bigint>("base", VAULT, vaultAbi, "collateralOf", [a])) > 0n) c++;
+    return c;
+  };
+  await pollUntil("withdrawals released", async () => ((await left()) === 0 ? true : undefined), 600_000).catch(() => undefined);
+  const still = await left();
+  console.log(
+    still === 0
+      ? `All ${waiting.length} crowd accounts are empty; price moves no longer send them syncs.`
+      : `${still} of ${waiting.length} still hold collateral. Re-run --cleanup in a minute; it only asks again where nothing is pending.`,
+  );
+}
+
 async function main() {
+  if (process.argv.includes("--cleanup")) return cleanup();
   const batch = await read<bigint>("lasna", CH, chAbi, "BATCH").catch(() => {
     throw new Error("This ClearingHouse has no BATCH(): it is the capped version. Redeploy with scripts/deploy.sh first.");
   });
