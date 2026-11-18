@@ -20,7 +20,7 @@ Built for the Reactive Omni Buildathon, track **Every Second Counts**.
 
 - **Three chains, about 2 s block to block.** That is the on-chain median for every single-loop flow in [Results](#results), not a best case. An account beyond the first 8 re-checked after a price move waits one relay more: about 4 s.
 - **The reactive contract is the protocol.** It holds the only cross-chain ledger and makes every decision that moves money. Remove it and nothing can be borrowed, withdrawn, protected or liquidated.
-- **It is safe under races.** Withdrawals settle in two phases, so withdrawing on Base and borrowing on Unichain at the same instant cannot leave the protocol short. This is covered by tests and fuzzing with randomly ordered cross-chain delivery, and `npm run race` runs the same attack against the live contracts (30-attempt results are being added).
+- **It is safe under races.** Withdrawals settle in two phases, so withdrawing on Base and borrowing on Unichain at the same instant cannot leave the protocol short. This is covered by tests and fuzzing with randomly ordered cross-chain delivery, and `npm run race` ran the same attack 30 times against the live contracts: [0 attempts where both succeeded, 0 insolvent outcomes](#two-phase-withdrawal-why-the-protocol-cannot-be-drained-by-racing-it).
 - **Anyone can reproduce it.** Use the hosted dashboard at **[kartikmanral092006.github.io/Lien](https://kartikmanral092006.github.io/Lien/)**: connect a wallet, borrow, add a shield and press *Drop WETH 10%*.
 
 ---
@@ -99,6 +99,14 @@ Neither chain can do any of this alone: Base does not know the debt, Unichain do
 4. ClearingHouse releases the collateral only if that debt fits under the new limit; otherwise it rejects and restores the limit.
 
 Any borrow the user fires during the window lands either before step 3 (so it is included in the debt snapshot, and the withdrawal is rejected) or after it (so it is bounded by the lower limit). There is no ordering in which both succeed beyond the collateral. Stale or reordered callbacks are dropped by a per-user sequence number, settlements are idempotent per request and liquidation id, and a user can always cancel a pending withdrawal.
+
+**Tested on-chain.** `npm run race -- --n 30` (run `race-1795008659897`, log in [`results/race.log`](results/race.log)) fired a full-collateral withdrawal on Base and a full-credit borrow on Unichain at the same moment, 30 times:
+
+| Attempts | Withdrawal released | Borrow filled | Both succeeded | Insolvent outcomes |
+|---|---|---|---|---|
+| 30 | 2 | 28 | **0** | **0** |
+
+The borrow usually wins because it is a single Unichain transaction, while the withdrawal needs a full loop through Lasna. Either way exactly one side succeeds. Example attempts: borrow first ([withdraw request](https://sepolia.basescan.org/tx/0x8a0d303559f2d6421a9b742c4a3272a4173e0288d69d048cd4a125d86c8ac517), [borrow](https://sepolia.uniscan.xyz/tx/0x284db607658c83bf5240fa55a3f24e79d6932c4aa7d00d3f335402e2b203c4c6), [withdrawal rejected](https://sepolia.basescan.org/tx/0xc3d345363f5de5e4d2622eec9c7915b7992a354c6948ef78a2c4e6cd64870fb8)), and withdrawal first ([withdraw request](https://sepolia.basescan.org/tx/0x1f7456945d585be74a28d1fb758f864e72ed9d47b613769676b55dacd85ec00a), [collateral released](https://sepolia.basescan.org/tx/0x15b6c6e55179659d12287c1386720d76ec4b6c89c521e0ec93c42f0b8b9e52d4), no borrow went through). Every attempt's transactions are in [`results/runs.jsonl`](results/runs.jsonl).
 
 ### Auto-protection (the shield)
 

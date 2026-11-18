@@ -1,6 +1,6 @@
 # Lien measured results
 
-Generated 2026-11-18T12:39:39.219Z from `results/runs.jsonl`.
+Generated 2026-11-18T13:41:16.633Z from `results/runs.jsonl`.
 
 Times are wall-clock from submitting the origin transaction to observing each leg via RPC polling (250 ms interval), so each figure carries up to ~0.25 s of observation lag.
 
@@ -31,6 +31,14 @@ Caveat: whole-second block timestamps on three chains; accurate to about ±1 s; 
 | reprice_batches | 1 | 4.00 | 4.00 | 4.00 | 4.00 | 7.14 |
 | price_to_limit_relayed | 4 | 4.00 | 5.00 | 5.00 | 5.00 | 7.61 |
 | protection_relayed | 1 | 4.00 | 4.00 | 4.00 | 4.00 | 7.14 |
+
+## Race attack
+
+Each attempt submits a full-collateral withdrawal on Base and a full-credit borrow on Unichain at the same moment.
+
+| Attempts | Withdrawals released | Borrows filled | Both succeeded | Insolvent outcomes |
+|---|---|---|---|---|
+| 30 | 2 | 28 | 0 | 0 |
 
 ## Per-leg breakdown
 

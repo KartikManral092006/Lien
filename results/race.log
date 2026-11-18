@@ -1,0 +1,37 @@
+
+> race
+> tsx src/race.ts --n 30
+
+Race attack race-1795008659897: 30 attempts to withdraw all collateral on Base while borrowing all credit on Unichain in the same moment
+  # 1 withdraw RELEASED  borrow blocked   debt 0.00  collateral 0.0000  solvent
+  # 2 withdraw rejected  borrow FILLED    debt 1400.00  collateral 1.0000  solvent
+  # 3 withdraw rejected  borrow FILLED    debt 1400.00  collateral 1.0000  solvent
+  # 4 withdraw rejected  borrow FILLED    debt 1400.00  collateral 1.0000  solvent
+  # 5 withdraw rejected  borrow FILLED    debt 1400.00  collateral 1.0000  solvent
+  # 6 withdraw rejected  borrow FILLED    debt 1400.00  collateral 1.0000  solvent
+  # 7 withdraw rejected  borrow FILLED    debt 1400.00  collateral 1.0000  solvent
+  # 8 withdraw rejected  borrow FILLED    debt 1400.00  collateral 1.0000  solvent
+  # 9 withdraw rejected  borrow FILLED    debt 1400.00  collateral 1.0000  solvent
+  #10 withdraw rejected  borrow FILLED    debt 1400.00  collateral 1.0000  solvent
+  #11 withdraw rejected  borrow FILLED    debt 1400.00  collateral 1.0000  solvent
+  #12 withdraw rejected  borrow FILLED    debt 1400.00  collateral 1.0000  solvent
+  #13 withdraw rejected  borrow FILLED    debt 1400.00  collateral 1.0000  solvent
+  #14 withdraw rejected  borrow FILLED    debt 1400.00  collateral 1.0000  solvent
+  #15 withdraw rejected  borrow FILLED    debt 1400.00  collateral 1.0000  solvent
+  #16 withdraw rejected  borrow FILLED    debt 1400.00  collateral 1.0000  solvent
+  #17 withdraw RELEASED  borrow blocked   debt 0.00  collateral 0.0000  solvent
+  #18 withdraw rejected  borrow FILLED    debt 1400.00  collateral 1.0000  solvent
+  #19 withdraw rejected  borrow FILLED    debt 1400.00  collateral 1.0000  solvent
+  #20 withdraw rejected  borrow FILLED    debt 1400.00  collateral 1.0000  solvent
+  #21 withdraw rejected  borrow FILLED    debt 1400.00  collateral 1.0000  solvent
+  #22 withdraw rejected  borrow FILLED    debt 1400.00  collateral 1.0000  solvent
+  #23 withdraw rejected  borrow FILLED    debt 1400.00  collateral 1.0000  solvent
+  #24 withdraw rejected  borrow FILLED    debt 1400.00  collateral 1.0000  solvent
+  #25 withdraw rejected  borrow FILLED    debt 1400.00  collateral 1.0000  solvent
+  #26 withdraw rejected  borrow FILLED    debt 1400.00  collateral 1.0000  solvent
+  #27 withdraw rejected  borrow FILLED    debt 1400.00  collateral 1.0000  solvent
+  #28 withdraw rejected  borrow FILLED    debt 1400.00  collateral 1.0000  solvent
+  #29 withdraw rejected  borrow FILLED    debt 1400.00  collateral 1.0000  solvent
+  #30 withdraw rejected  borrow FILLED    debt 1400.00  collateral 1.0000  solvent
+
+30 attempts: 2 withdrawals released, 28 borrows filled, 0 where both succeeded, 0 insolvent outcomes
