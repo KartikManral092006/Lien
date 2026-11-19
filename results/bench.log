@@ -1,0 +1,107 @@
+
+> bench
+> tsx src/bench.ts --n 20 --flows deposit,withdraw,price
+
+Benchmark bench-1795016294984: n=20, flows=deposit,withdraw,price
+
+round 1/20
+  deposit_to_credit          7.11 s   base:0.95s lasna:4.92s unichain:7.11s
+  withdraw_two_phase         9.83 s   base:1.08s lasna:3.60s unichain:6.68s lasna:7.43s base:9.83s
+  price_to_limit             8.69 s   base:0.94s lasna:3.97s unichain:7.03s lasna:7.42s unichain:8.69s
+
+round 2/20
+  deposit_to_credit          7.37 s   base:1.38s lasna:3.19s unichain:7.37s
+  withdraw_two_phase         9.18 s   base:1.17s lasna:3.80s unichain:6.16s lasna:7.83s base:9.18s
+  price_to_limit             7.77 s   base:1.32s lasna:2.71s unichain:5.27s lasna:6.48s unichain:7.77s
+
+round 3/20
+  deposit_to_credit          6.68 s   base:0.94s lasna:4.44s unichain:6.68s
+  withdraw_two_phase         9.66 s   base:1.52s lasna:4.43s unichain:6.98s lasna:8.52s base:9.66s
+  price_to_limit             7.73 s   base:1.11s lasna:3.00s unichain:5.43s lasna:5.88s unichain:7.73s
+
+round 4/20
+  deposit_to_credit          7.22 s   base:0.94s lasna:5.10s unichain:7.22s
+  withdraw_two_phase         8.45 s   base:1.09s lasna:3.56s unichain:5.70s lasna:6.82s base:8.45s
+  price_to_limit             7.37 s   base:1.03s lasna:2.84s unichain:5.64s lasna:6.08s unichain:7.37s
+
+round 5/20
+  deposit_to_credit          5.69 s   base:1.05s lasna:2.92s unichain:5.69s
+  withdraw_two_phase         7.87 s   base:1.10s lasna:3.49s unichain:5.71s lasna:6.78s base:7.87s
+  price_to_limit             7.42 s   base:0.99s lasna:3.20s unichain:4.79s lasna:5.23s unichain:7.42s
+
+round 6/20
+  deposit_to_credit          5.33 s   base:0.98s lasna:2.99s unichain:5.33s
+  withdraw_two_phase         8.34 s   base:2.12s lasna:3.72s unichain:5.83s lasna:7.38s base:8.34s
+  price_to_limit             10.57 s   base:1.05s lasna:2.40s unichain:7.30s lasna:8.72s unichain:10.57s
+
+round 7/20
+  deposit_to_credit          6.70 s   base:0.69s lasna:3.89s unichain:6.70s
+  withdraw_two_phase         8.02 s   base:1.10s lasna:3.98s unichain:6.21s lasna:6.90s base:8.02s
+  price_to_limit             20.21 s   base:1.45s lasna:14.19s unichain:18.16s lasna:18.59s unichain:20.21s
+
+round 8/20
+  deposit_to_credit          7.38 s   base:1.35s lasna:5.20s unichain:7.38s
+  withdraw_two_phase         7.89 s   base:1.02s lasna:3.35s unichain:6.11s lasna:6.86s base:7.89s
+  price_to_limit             8.20 s   base:0.94s lasna:3.74s unichain:6.53s lasna:6.92s unichain:8.20s
+
+round 9/20
+  deposit_to_credit          5.64 s   base:1.06s lasna:2.99s unichain:5.64s
+  withdraw_two_phase         8.74 s   base:1.02s lasna:3.53s unichain:5.63s lasna:6.29s base:8.74s
+  price_to_limit             7.00 s   base:0.73s lasna:2.90s unichain:5.37s lasna:5.72s unichain:7.00s
+
+round 10/20
+  deposit_to_credit          4.82 s   base:1.15s lasna:2.33s unichain:4.82s
+  withdraw_two_phase         8.02 s   base:1.03s lasna:3.93s unichain:6.12s lasna:6.80s base:8.02s
+  price_to_limit             9.26 s   base:0.65s lasna:3.50s unichain:5.85s lasna:7.49s unichain:9.26s
+
+round 11/20
+  deposit_to_credit          6.27 s   base:0.69s lasna:3.78s unichain:6.27s
+  withdraw_two_phase         9.93 s   base:1.06s lasna:4.48s unichain:6.83s lasna:7.93s base:9.93s
+  price_to_limit             7.88 s   base:0.69s lasna:3.62s unichain:6.25s lasna:6.64s unichain:7.88s
+
+round 12/20
+  deposit_to_credit          6.13 s   base:1.02s lasna:3.96s unichain:6.13s
+  withdraw_two_phase         9.26 s   base:1.11s lasna:4.13s unichain:6.71s lasna:8.22s base:9.26s
+  price_to_limit             8.63 s   base:1.94s lasna:4.25s unichain:6.92s lasna:7.36s unichain:8.63s
+
+round 13/20
+  deposit_to_credit          7.07 s   base:1.34s lasna:4.19s unichain:7.07s
+  withdraw_two_phase         10.52 s   base:1.10s lasna:3.95s unichain:6.26s lasna:6.95s base:10.52s
+  price_to_limit             9.03 s   base:0.73s lasna:3.92s unichain:7.27s lasna:7.74s unichain:9.03s
+
+round 14/20
+  deposit_to_credit          7.05 s   base:0.74s lasna:4.08s unichain:7.05s
+  withdraw_two_phase         9.65 s   base:1.15s lasna:3.30s unichain:6.46s lasna:7.99s base:9.65s
+  price_to_limit             7.67 s   base:0.76s lasna:3.03s unichain:5.77s lasna:6.18s unichain:7.67s
+
+round 15/20
+  deposit_to_credit          8.42 s   base:1.33s lasna:5.70s unichain:8.42s
+  withdraw_two_phase         10.12 s   base:1.30s lasna:3.11s unichain:5.68s lasna:6.38s base:10.12s
+  price_to_limit             9.38 s   base:0.94s lasna:4.47s unichain:6.66s lasna:7.88s unichain:9.38s
+
+round 16/20
+  deposit_to_credit          7.20 s   base:0.78s lasna:4.62s unichain:7.20s
+  withdraw_two_phase         9.04 s   base:1.05s lasna:4.77s unichain:7.06s lasna:7.75s base:9.04s
+  price_to_limit             8.94 s   base:0.73s lasna:3.71s unichain:6.53s lasna:7.67s unichain:8.94s
+
+round 17/20
+  deposit_to_credit          6.66 s   base:0.72s lasna:3.96s unichain:6.66s
+  withdraw_two_phase         7.91 s   base:1.70s lasna:3.74s unichain:5.93s lasna:6.65s base:7.91s
+  price_to_limit             8.13 s   base:0.76s lasna:2.38s unichain:5.17s lasna:6.75s unichain:8.13s
+
+round 18/20
+  deposit_to_credit          7.07 s   base:0.79s lasna:4.26s unichain:7.07s
+  withdraw_two_phase         13.47 s   base:1.00s lasna:4.37s unichain:9.53s lasna:12.42s base:13.47s
+  price_to_limit             9.11 s   base:1.14s lasna:2.94s unichain:5.89s lasna:6.76s unichain:9.11s
+
+round 19/20
+  deposit_to_credit          6.79 s   base:0.80s lasna:4.63s unichain:6.79s
+  withdraw_two_phase         15.57 s   base:1.13s lasna:4.96s unichain:7.17s lasna:8.74s base:15.57s
+  price_to_limit             9.24 s   base:1.20s lasna:4.28s unichain:7.05s lasna:7.87s unichain:9.24s
+
+round 20/20
+  deposit_to_credit          6.19 s   base:0.99s lasna:4.05s unichain:6.19s
+  withdraw_two_phase         15.11 s   base:1.71s lasna:4.86s unichain:9.13s lasna:13.28s base:15.11s
+  price_to_limit             10.37 s   base:1.99s lasna:4.88s unichain:8.62s lasna:9.02s unichain:10.37s
+
+Done. Results appended to results/runs.jsonl. Run "npm run analyze".

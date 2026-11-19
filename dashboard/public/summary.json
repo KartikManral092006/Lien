@@ -1,42 +1,42 @@
 {
-  "generatedAt": "2026-11-18T13:41:16.633Z",
+  "generatedAt": "2026-11-19T03:50:07.240Z",
   "flows": {
     "deposit_to_credit": {
-      "n": 8,
-      "p50": 6290,
-      "p90": 7561,
+      "n": 28,
+      "p50": 6678,
+      "p90": 7385,
       "p95": 7561,
-      "max": 7561,
+      "max": 8418,
       "failures": 0,
       "legs": [
         {
           "name": "base: deposit (origin)",
-          "p50": 2009,
-          "p95": 2773
+          "p50": 989,
+          "p95": 2238
         },
         {
           "name": "lasna: ClearingHouse react",
-          "p50": 2240,
-          "p95": 3139
+          "p50": 2943,
+          "p95": 4163
         },
         {
           "name": "unichain: credit applied (callback)",
-          "p50": 2408,
-          "p95": 2846
+          "p50": 2492,
+          "p95": 2969
         }
       ],
       "onchain": {
-        "n": 8,
+        "n": 28,
         "p50": 2000,
-        "p90": 2000,
-        "p95": 2000,
-        "max": 2000,
+        "p90": 4000,
+        "p95": 4000,
+        "max": 4000,
         "legs": [
           {
             "name": "lasna: ClearingHouse react",
-            "p50": -1000,
+            "p50": 0,
             "min": -1000,
-            "max": 0
+            "max": 1000
           },
           {
             "name": "unichain: credit applied (callback)",
@@ -48,41 +48,41 @@
       }
     },
     "withdraw_two_phase": {
-      "n": 13,
-      "p50": 9005,
-      "p90": 9911,
-      "p95": 11501,
-      "max": 11501,
+      "n": 33,
+      "p50": 9176,
+      "p90": 11501,
+      "p95": 15114,
+      "max": 15570,
       "failures": 0,
       "legs": [
         {
           "name": "base: requestWithdraw (origin)",
-          "p50": 2250,
-          "p95": 3623
+          "p50": 1172,
+          "p95": 2912
         },
         {
           "name": "lasna: phase 1: lower credit",
-          "p50": 1932,
+          "p50": 2514,
           "p95": 3717
         },
         {
           "name": "unichain: limit applied + debt snapshot",
-          "p50": 2759,
-          "p95": 3253
+          "p50": 2498,
+          "p95": 4279
         },
         {
           "name": "lasna: phase 2: decide",
-          "p50": 721,
-          "p95": 1623
+          "p50": 762,
+          "p95": 2886
         },
         {
           "name": "base: collateral released",
-          "p50": 1054,
-          "p95": 1692
+          "p50": 1219,
+          "p95": 3741
         }
       ],
       "onchain": {
-        "n": 13,
+        "n": 33,
         "p50": 4000,
         "p90": 5000,
         "p95": 5000,
@@ -90,14 +90,14 @@
         "legs": [
           {
             "name": "lasna: phase 1: lower credit",
-            "p50": -1000,
+            "p50": 0,
             "min": -1000,
-            "max": 0
+            "max": 1000
           },
           {
             "name": "unichain: limit applied + debt snapshot",
             "p50": 3000,
-            "min": 3000,
+            "min": 2000,
             "max": 3000
           },
           {
@@ -109,7 +109,7 @@
           {
             "name": "base: collateral released",
             "p50": 2000,
-            "min": 2000,
+            "min": 1000,
             "max": 3000
           }
         ]
@@ -300,56 +300,56 @@
       }
     },
     "price_to_limit_relayed": {
-      "n": 4,
-      "p50": 7613,
-      "p90": 9368,
-      "p95": 9368,
-      "max": 9368,
+      "n": 24,
+      "p50": 8437,
+      "p90": 10366,
+      "p95": 10573,
+      "max": 20207,
       "failures": 0,
       "legs": [
         {
           "name": "base: price update (origin)",
-          "p50": 1161,
-          "p95": 1902
+          "p50": 993,
+          "p95": 1937
         },
         {
           "name": "lasna: ClearingHouse re-prices",
-          "p50": 1984,
-          "p95": 2948
+          "p50": 2275,
+          "p95": 3536
         },
         {
           "name": "unichain: relay 1 (callback)",
-          "p50": 2364,
-          "p95": 2666
+          "p50": 2667,
+          "p95": 3975
         },
         {
           "name": "lasna: ClearingHouse re-prices batch 2",
-          "p50": 416,
-          "p95": 888
+          "p50": 442,
+          "p95": 1580
         },
         {
           "name": "unichain: limit updated",
           "p50": 1364,
-          "p95": 2144
+          "p95": 2188
         }
       ],
       "onchain": {
-        "n": 4,
-        "p50": 4000,
+        "n": 24,
+        "p50": 5000,
         "p90": 5000,
         "p95": 5000,
-        "max": 5000,
+        "max": 6000,
         "legs": [
           {
             "name": "lasna: ClearingHouse re-prices",
-            "p50": -1000,
+            "p50": 0,
             "min": -1000,
-            "max": 0
+            "max": 1000
           },
           {
             "name": "unichain: relay 1 (callback)",
             "p50": 3000,
-            "min": 3000,
+            "min": 2000,
             "max": 3000
           },
           {
