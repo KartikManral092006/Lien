@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-11-19T06:52:28.076Z",
+  "generatedAt": "2026-11-19T07:02:00.985Z",
   "flows": {
     "deposit_to_credit": {
       "n": 28,
@@ -300,8 +300,8 @@
       }
     },
     "price_to_limit_relayed": {
-      "n": 25,
-      "p50": 8482,
+      "n": 26,
+      "p50": 8437,
       "p90": 10366,
       "p95": 10573,
       "max": 20207,
@@ -309,12 +309,12 @@
       "legs": [
         {
           "name": "base: price update (origin)",
-          "p50": 993,
+          "p50": 981,
           "p95": 1937
         },
         {
           "name": "lasna: ClearingHouse re-prices",
-          "p50": 2315,
+          "p50": 2275,
           "p95": 3536
         },
         {
@@ -334,7 +334,7 @@
         }
       ],
       "onchain": {
-        "n": 25,
+        "n": 26,
         "p50": 5000,
         "p90": 5000,
         "p95": 6000,
@@ -368,26 +368,26 @@
       }
     },
     "protection_relayed": {
-      "n": 2,
-      "p50": 7049,
-      "p90": 7142,
-      "p95": 7142,
-      "max": 7142,
+      "n": 3,
+      "p50": 7142,
+      "p90": 7788,
+      "p95": 7788,
+      "max": 7788,
       "failures": 0,
       "legs": [
         {
           "name": "base: price drop (origin)",
-          "p50": 936,
-          "p95": 1246
+          "p50": 1246,
+          "p95": 1370
         },
         {
           "name": "lasna: ClearingHouse re-prices",
-          "p50": 1310,
-          "p95": 1654
+          "p50": 1654,
+          "p95": 2134
         },
         {
           "name": "unichain: relay 1 (callback)",
-          "p50": 2193,
+          "p50": 2490,
           "p95": 3093
         },
         {
@@ -397,22 +397,22 @@
         },
         {
           "name": "unichain: shield repaid debt (callback)",
-          "p50": 1266,
-          "p95": 1284
+          "p50": 1284,
+          "p95": 1355
         }
       ],
       "onchain": {
-        "n": 2,
+        "n": 3,
         "p50": 4000,
-        "p90": 4000,
-        "p95": 4000,
-        "max": 4000,
+        "p90": 5000,
+        "p95": 5000,
+        "max": 5000,
         "legs": [
           {
             "name": "lasna: ClearingHouse re-prices",
             "p50": -1000,
             "min": -1000,
-            "max": -1000
+            "max": 0
           },
           {
             "name": "unichain: relay 1 (callback)",
@@ -428,7 +428,7 @@
           },
           {
             "name": "unichain: shield repaid debt (callback)",
-            "p50": 2000,
+            "p50": 3000,
             "min": 2000,
             "max": 3000
           }

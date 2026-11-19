@@ -1,0 +1,11 @@
+
+> bench
+> tsx src/bench.ts --n 1 --flows protection
+
+Benchmark bench-1795071504653: n=1, flows=protection
+
+round 1/1
+  protection                 7.79 s   base:1.37s lasna:3.50s unichain:5.99s lasna:6.43s unichain:7.79s
+  price_restore              8.14 s   base:0.98s lasna:2.13s unichain:5.13s lasna:6.41s unichain:8.14s
+
+Done. Results appended to results/runs.jsonl. Run "npm run analyze".

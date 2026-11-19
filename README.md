@@ -10,7 +10,7 @@ Built for the Reactive Omni Buildathon, track **Every Second Counts**.
 
 ![The shield rescuing a live testnet loan on the hosted dashboard](docs/media/shield-rescue.gif)
 
-*Recorded live on testnet (run `bench-1795067054902`). WETH drops to $1,600, so on price alone the loan could be liquidated. Seconds later the shield repays 280 USDC on Unichain, in the same callback that sets the new limit, and the account is never flagged: price update on [Base](https://sepolia.basescan.org/tx/0x5daae15b6d9de87bbe616a6cd7cac8b332e2f2ef78443d6069d2bee8a970ae6f), protection ordered on [Lasna](https://lasna.reactscan.net/tx/0xf2f9ad664d918ed9cdc6d5f0005d8bdd5fd3a62c7c9e615823c5954b52410157), repayment on [Unichain](https://sepolia.uniscan.xyz/tx/0x60d4f8764985cf3d82596b5792ccc74acd7d3f02082adf57a185ff1062db3709); 4 s block to block.*
+*Recorded live on testnet (run `bench-1795071504653`). WETH drops to $1,600, so on price alone the loan could be liquidated. Seconds later the shield repays 280 USDC on Unichain, in the same callback that sets the new limit, and the account is never flagged: price update on [Base](https://sepolia.basescan.org/tx/0x84c62bf63b3e858bd23dc3201415d7884c229b102a7a852392ac6ef1fc4c7011), protection ordered on [Lasna](https://lasna.reactscan.net/tx/0x33cfb472fc5eff759fa1745ddcacdea8957f9253756a036f7f12981b2ff05216), repayment on [Unichain](https://sepolia.uniscan.xyz/tx/0x70e854bb05946ca67180aa70a0d217779d95637a0c81879d0bd0cfe1fdef0c1e); 5 s block to block.*
 
 ### In one transaction chain
 
@@ -194,8 +194,8 @@ Live testnet runs (`npm run analyze`; see [`results/SUMMARY.md`](results/SUMMARY
 | Price drop → new limit on Unichain | 13 | **2 s** | 3 s | 6.9 s | 8.2 s |
 | Liquidation → seizure on Base | 4 | **2 s** | 2 s | 6.6 s | 8.4 s |
 | Price drop → shield repays on Unichain | 1 | **2 s** | 2 s | 6.7 s | 6.7 s |
-| Price move → new limit, account in the second batch (via relay) | 25 | **5 s** | 6 s | 8.5 s | 10.6 s |
-| Price drop → shield repays, account in the second batch (via relay) | 2 | **4 s** | 4 s | 7.1 s | 7.1 s |
+| Price move → new limit, account in the second batch (via relay) | 26 | **5 s** | 6 s | 8.4 s | 10.6 s |
+| Price drop → shield repays, account in the second batch (via relay) | 3 | **4 s** | 5 s | 7.1 s | 7.8 s |
 | Price drop → all 12 accounts re-checked (two batches) | 1 | **4 s** | 4 s | 7.1 s | 7.1 s |
 
 - **Precision:** block timestamps on these chains are whole seconds, and the three chains' clocks differ slightly (a Lasna block can carry an earlier timestamp than the Base block it reacted to). On-chain figures are therefore accurate to about ±1 s; [`results/SUMMARY.md`](results/SUMMARY.md) has the per-leg values.
@@ -345,7 +345,7 @@ Built with React, Tailwind CSS v4, Radix primitives, Motion, [Magic UI](https://
 - **Price risk window:** between a price crash and the `sync` landing on Unichain, a user can still borrow against the old limit. The ledger flags the account as soon as that debt reaches it, and the LTV/LT gap (70% / 80%) is the buffer for the window. The results above measure how long it is.
 - **L2 soft finality:** credit is granted when the deposit is seen on Base, before L1 finality. A reorg after that could void a deposit. A production version would bound credit by recent deposits or wait for batch posting.
 - **Mock oracle and tokens**, no interest rates, owner-seeded lending liquidity. On testnet anyone can move the oracle within the controller's limits; a real deployment would use a price feed such as Chainlink.
-- **Re-pricing in batches:** a price update re-checks the first 8 accounts inside `react()`. Each further 8 wait for one more relay round trip through Unichain (the measured 12-account pass, two batches, took about 4 s by block timestamps; a second-batch account's new limit lands in about 5 s, median of 25 runs), so the 100th account is re-checked noticeably later than the first. The ledger has no account cap, but very large account counts would need prioritising the riskiest accounts first. `continueReprice` is callable by anyone as a fallback if a relay is ever lost, because it only runs the next unprocessed batch of the current price, once; the worst a stranger can do is make that batch run sooner.
+- **Re-pricing in batches:** a price update re-checks the first 8 accounts inside `react()`. Each further 8 wait for one more relay round trip through Unichain (the measured 12-account pass, two batches, took about 4 s by block timestamps; a second-batch account's new limit lands in about 5 s, median of 26 runs), so the 100th account is re-checked noticeably later than the first. The ledger has no account cap, but very large account counts would need prioritising the riskiest accounts first. `continueReprice` is callable by anyone as a fallback if a relay is ever lost, because it only runs the next unprocessed batch of the current price, once; the worst a stranger can do is make that batch run sooner.
 - Testnet only, unaudited.
 
 ## Repository
