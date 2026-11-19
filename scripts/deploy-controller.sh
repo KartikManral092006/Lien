@@ -31,7 +31,7 @@ PC_MIN_PRICE="${PC_MIN_PRICE:-50000000000}"    # $500
 PC_MAX_PRICE="${PC_MAX_PRICE:-500000000000}"   # $5,000
 PC_MAX_MOVE_BPS="${PC_MAX_MOVE_BPS:-3000}"     # 30% per move
 PC_COOLDOWN="${PC_COOLDOWN:-60}"               # seconds between public moves
-PC_MOVES_PER_DAY="${PC_MOVES_PER_DAY:-30}"     # public moves per UTC day
+PC_MOVES_PER_DAY="${PC_MOVES_PER_DAY:-10}"     # public moves per UTC day
 
 DEP="$ROOT/deployments.json"
 [[ -f "$DEP" ]] || { echo "deployments.json not found. Run scripts/deploy.sh first." >&2; exit 1; }

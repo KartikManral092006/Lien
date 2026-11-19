@@ -80,10 +80,10 @@ contract LienPriceControllerTest is LienHarness {
 
         vm.roll(block.number + 10_000); // many blocks, no time
         vm.prank(stranger);
-        vm.expectRevert(abi.encodeWithSelector(PriceController.CoolingDown.selector, block.timestamp + COOLDOWN));
+        vm.expectRevert(abi.encodeWithSelector(PriceController.CoolingDown.selector, vm.getBlockTimestamp() + COOLDOWN));
         pc.setPrice(1_800e8);
 
-        vm.warp(block.timestamp + COOLDOWN - 1);
+        vm.warp(vm.getBlockTimestamp() + COOLDOWN - 1);
         vm.prank(stranger);
         vm.expectRevert();
         pc.setPrice(1_800e8);
@@ -119,7 +119,7 @@ contract LienPriceControllerTest is LienHarness {
 
         pc.ownerSetPrice(1_500e8);
         vm.prank(stranger);
-        vm.expectRevert(abi.encodeWithSelector(PriceController.CoolingDown.selector, block.timestamp + COOLDOWN));
+        vm.expectRevert(abi.encodeWithSelector(PriceController.CoolingDown.selector, vm.getBlockTimestamp() + COOLDOWN));
         pc.resetPrice();
     }
 

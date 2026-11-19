@@ -29,7 +29,11 @@ export const feedAbi = parseAbi([
 ]);
 
 /** Testnet PriceController: owns the feed; the deployer (bots) uses the unthrottled ownerSetPrice. */
-export const priceControllerAbi = parseAbi(["function ownerSetPrice(uint256 newPrice)"]);
+export const priceControllerAbi = parseAbi([
+  "function ownerSetPrice(uint256 newPrice)",
+  "function status() view returns (uint256 nextMoveAt, uint256 movesLeftToday)",
+  "function maxMovesPerDay() view returns (uint256)",
+]);
 
 export const marketAbi = parseAbi([
   "event RepriceRelayed(uint256 indexed epoch)",
@@ -76,7 +80,10 @@ export const chShieldAbi = parseAbi([
   "function accounts(address user) view returns (uint256 collateral, uint256 pending, uint256 debt, uint256 limit, uint64 seq, bool liquidatable, bool tracked, uint256 shield)",
 ]);
 
-export const payableAbi = parseAbi(["function debt(address target) view returns (uint256)"]);
+export const payableAbi = parseAbi([
+  "function debt(address target) view returns (uint256)",
+  "function reserves(address target) view returns (uint256)",
+]);
 
 export const Kind = {
   Deposit: 0,
