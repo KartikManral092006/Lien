@@ -1,6 +1,6 @@
 # Lien measured results
 
-Generated 2026-11-19T03:50:07.240Z from `results/runs.jsonl`.
+Generated 2026-11-19T06:52:28.076Z from `results/runs.jsonl`.
 
 Times are wall-clock from submitting the origin transaction to observing each leg via RPC polling (250 ms interval), so each figure carries up to ~0.25 s of observation lag.
 
@@ -12,8 +12,8 @@ Times are wall-clock from submitting the origin transaction to observing each le
 | liquidation_cross_chain | 4 | 6.62 | 8.37 | 8.37 | 8.37 | 0 |
 | protection | 1 | 6.68 | 6.68 | 6.68 | 6.68 | 0 |
 | reprice_batches | 1 | 7.14 | 7.14 | 7.14 | 7.14 | 1 |
-| price_to_limit_relayed | 24 | 8.44 | 10.37 | 10.57 | 20.21 | 0 |
-| protection_relayed | 1 | 7.14 | 7.14 | 7.14 | 7.14 | 0 |
+| price_to_limit_relayed | 25 | 8.48 | 10.37 | 10.57 | 20.21 | 0 |
+| protection_relayed | 2 | 7.05 | 7.14 | 7.14 | 7.14 | 0 |
 
 ## On-chain latency (block to block)
 
@@ -29,8 +29,8 @@ Caveat: whole-second block timestamps on three chains; accurate to about ±1 s; 
 | liquidation_cross_chain | 4 | 2.00 | 2.00 | 2.00 | 2.00 | 6.62 |
 | protection | 1 | 2.00 | 2.00 | 2.00 | 2.00 | 6.68 |
 | reprice_batches | 1 | 4.00 | 4.00 | 4.00 | 4.00 | 7.14 |
-| price_to_limit_relayed | 24 | 5.00 | 5.00 | 5.00 | 6.00 | 8.44 |
-| protection_relayed | 1 | 4.00 | 4.00 | 4.00 | 4.00 | 7.14 |
+| price_to_limit_relayed | 25 | 5.00 | 5.00 | 6.00 | 6.00 | 8.48 |
+| protection_relayed | 2 | 4.00 | 4.00 | 4.00 | 4.00 | 7.05 |
 
 ## Race attack
 
@@ -141,7 +141,7 @@ On-chain gap from the previous leg's block (block timestamps):
 | Leg | p50 (s) | p95 (s) |
 |---|---|---|
 | base: price update (origin) | 0.99 | 1.94 |
-| lasna: ClearingHouse re-prices | 2.27 | 3.54 |
+| lasna: ClearingHouse re-prices | 2.31 | 3.54 |
 | unichain: relay 1 (callback) | 2.67 | 3.98 |
 | lasna: ClearingHouse re-prices batch 2 | 0.44 | 1.58 |
 | unichain: limit updated | 1.36 | 2.19 |
@@ -159,11 +159,11 @@ On-chain gap from the previous leg's block (block timestamps):
 
 | Leg | p50 (s) | p95 (s) |
 |---|---|---|
-| base: price drop (origin) | 1.25 | 1.25 |
-| lasna: ClearingHouse re-prices | 1.65 | 1.65 |
-| unichain: relay 1 (callback) | 2.19 | 2.19 |
-| lasna: ClearingHouse re-prices batch 2 | 0.77 | 0.77 |
-| unichain: shield repaid debt (callback) | 1.28 | 1.28 |
+| base: price drop (origin) | 0.94 | 1.25 |
+| lasna: ClearingHouse re-prices | 1.31 | 1.65 |
+| unichain: relay 1 (callback) | 2.19 | 3.09 |
+| lasna: ClearingHouse re-prices batch 2 | 0.44 | 0.77 |
+| unichain: shield repaid debt (callback) | 1.27 | 1.28 |
 
 On-chain gap from the previous leg's block (block timestamps):
 
@@ -171,5 +171,5 @@ On-chain gap from the previous leg's block (block timestamps):
 |---|---|---|---|
 | lasna: ClearingHouse re-prices | -1.00 | -1.00 | -1.00 |
 | unichain: relay 1 (callback) | 3.00 | 3.00 | 3.00 |
-| lasna: ClearingHouse re-prices batch 2 | 0.00 | 0.00 | 0.00 |
-| unichain: shield repaid debt (callback) | 2.00 | 2.00 | 2.00 |
+| lasna: ClearingHouse re-prices batch 2 | -1.00 | -1.00 | 0.00 |
+| unichain: shield repaid debt (callback) | 2.00 | 2.00 | 3.00 |
