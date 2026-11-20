@@ -13,6 +13,7 @@ import { Logo } from "./components/Logo";
 import { Navbar } from "./components/Navbar";
 import { Performance } from "./components/Performance";
 import { Position } from "./components/Position";
+import { RescueReplay } from "./components/RescueReplay";
 import { SettlementLoop } from "./components/SettlementLoop";
 import { ScrollProgress } from "./components/SmoothScroll";
 import { StressTools } from "./components/StressTools";
@@ -35,6 +36,7 @@ export default function App() {
       <Navbar />
       <Frame>
         <Hero summary={summary.data} price={demo.data?.price} />
+        <RescueReplay />
         {deps.isError ? <NotDeployed /> : deps.data ? <Dashboard d={deps.data} /> : <Loading />}
       </Frame>
     </>

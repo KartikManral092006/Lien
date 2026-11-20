@@ -27,7 +27,7 @@ Built for the Reactive Omni Buildathon, track **Every Second Counts**.
 - **Three chains, 2–3 s block to block.** That is the on-chain median for every single-loop flow in [Results](#results), not a best case. An account beyond the first 8 re-checked after a price move waits one relay more: about 5 s. On the previous ~7 s Reactive blocks the same loops would take two to three times as long ([why it needs Omni](#why-it-needs-reactive-omni-in-numbers)).
 - **The reactive contract is the protocol.** It holds the only cross-chain ledger and makes every decision that moves money. Remove it and nothing can be borrowed, withdrawn, protected or liquidated.
 - **It is safe under races.** Withdrawals settle in two phases, so withdrawing on Base and borrowing on Unichain at the same instant cannot leave the protocol short. This is covered by tests and fuzzing with randomly ordered cross-chain delivery, and `npm run race` ran the same attack 30 times against the live contracts: [0 attempts where both succeeded, 0 insolvent outcomes](#two-phase-withdrawal-why-the-protocol-cannot-be-drained-by-racing-it).
-- **Anyone can reproduce it.** Use the hosted dashboard at **[kartikmanral092006.github.io/Lien](https://kartikmanral092006.github.io/Lien/)**: connect a wallet, borrow, add a shield and press *Drop WETH 10%*.
+- **Anyone can reproduce it.** Use the hosted dashboard at **[kartikmanral092006.github.io/Lien](https://kartikmanral092006.github.io/Lien/)**: connect a wallet, borrow, add a shield and press *Drop WETH 10%*. No wallet? Press **▶ Watch a rescue** in its top bar to replay a real recorded rescue step by step, with every transaction linked.
 
 ---
 
@@ -242,6 +242,8 @@ Anyone can move the test price, so you can watch Reactive settle a rescue or a l
 1. In the [dashboard](#3-dashboard), connect a wallet and follow the checklist: get test WETH, deposit, borrow close to your limit, and add a shield.
 2. In **Testnet stress tools**, press **Drop WETH 10%**. Within seconds the ClearingHouse orders the shield to repay part of your loan; the settlement tracker times each leg. **Drop WETH 25%** without a shield makes the account liquidatable instead.
 3. Press **Reset** when you are done.
+
+No wallet: press **▶ Watch a rescue** at the top of the dashboard. It replays benchmark run `bench-1795071504653` from [`results/runs.jsonl`](results/runs.jsonl) (price drop on Base → two re-pricing batches on Lasna with a relay through Unichain → shield repays 280 USDC on Unichain, 5 s by block timestamps). It is a recording, not a live run, and every step links to its real transaction.
 
 The price is shared, so a move affects every account. Each public move is limited to 30%, within $500–$5,000, once every 60 seconds and 10 times per UTC day. The limits exist because every move costs the ClearingHouse lREACT on Lasna: one reaction, plus a sync for every account whose limit changes; the owner can tighten them with `setLimits`.
 

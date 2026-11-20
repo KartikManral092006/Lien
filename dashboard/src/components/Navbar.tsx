@@ -1,10 +1,11 @@
 import { ConnectButton } from "@rainbow-me/rainbowkit";
-import { Search } from "lucide-react";
+import { Play, Search } from "lucide-react";
 import { useMotionValueEvent, useScroll } from "motion/react";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { CHAIN_META, type ChainKey } from "../lib/chain";
 import { useHeads } from "../lib/data";
+import { watchRescue } from "../lib/rescueRun";
 import { setPaletteOpen } from "../lib/ui";
 import { Logo } from "./Logo";
 import { Hint, chainBg } from "./primitives";
@@ -40,6 +41,7 @@ export function Navbar() {
         <div className="ml-auto flex items-stretch">
           <CommandButton />
           <Networks />
+          <WatchRescue />
           <Wallet />
         </div>
       </nav>
@@ -85,6 +87,22 @@ function Networks() {
   );
 }
 
+/** The no-wallet way in: jumps to the recorded rescue and plays it from the start. Shown on every screen size. */
+function WatchRescue() {
+  return (
+    <a
+      href="#rescue"
+      onClick={watchRescue}
+      className="group relative flex items-center gap-2 overflow-hidden border-l border-line bg-chain-lasna/10 px-3 text-sm font-medium text-ink transition-colors hover:bg-chain-lasna/20 sm:px-5"
+    >
+      <span aria-hidden className="absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-chain-base via-chain-lasna to-chain-uni" />
+      <Play className="size-3.5 fill-chain-lasna text-chain-lasna transition-transform group-hover:scale-110" aria-hidden />
+      <span className="sm:hidden">Rescue</span>
+      <span className="hidden sm:inline">Watch a rescue</span>
+    </a>
+  );
+}
+
 function Wallet() {
   return (
     <ConnectButton.Custom>
@@ -93,8 +111,9 @@ function Wallet() {
         if (!mounted) return <div className="w-36 border-l border-line" aria-hidden />;
         if (!account)
           return (
-            <button onClick={openConnectModal} className={cn(cls, "bg-ink text-paper hover:bg-white")}>
-              Connect wallet
+            <button onClick={openConnectModal} className={cn(cls, "bg-ink px-3 text-paper hover:bg-white sm:px-5")}>
+              <span className="sm:hidden">Connect</span>
+              <span className="hidden sm:inline">Connect wallet</span>
             </button>
           );
         if (chain?.unsupported)

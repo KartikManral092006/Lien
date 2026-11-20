@@ -3,6 +3,7 @@ import { Suspense, lazy, useEffect, useRef, useState } from "react";
 import { ScenePoster } from "./ScenePoster";
 import { CHAIN_META, PRICE, fmt, type ChainKey } from "../../lib/chain";
 import { useHeads, type Summary } from "../../lib/data";
+import { watchRescue } from "../../lib/rescueRun";
 import { Band } from "../grid";
 import { Marquee } from "../magicui/marquee";
 import { NumberTicker } from "../magicui/number-ticker";
@@ -80,11 +81,11 @@ export function Hero({ summary, price }: { summary?: Summary | null; price?: big
               Your collateral stays on Base and you borrow on Unichain, with no bridge and no wrapped tokens. One ledger on Reactive Network settles both chains in seconds.
             </motion.p>
             <motion.div {...enter(2)} className="grid grid-cols-2 border-t border-line">
-              <a href="#position" className="flex h-16 items-center justify-center bg-ink text-sm font-medium text-paper transition-colors hover:bg-white">
-                Open your position
+              <a href="#rescue" onClick={watchRescue} className="flex h-16 items-center justify-center bg-ink text-sm font-medium text-paper transition-colors hover:bg-white">
+                Watch a real rescue
               </a>
-              <a href="#how" className="flex h-16 items-center justify-center border-l border-line text-sm font-medium transition-colors hover:bg-white/[0.04]">
-                How it works
+              <a href="#position" className="flex h-16 items-center justify-center border-l border-line text-sm font-medium transition-colors hover:bg-white/[0.04]">
+                Open your position
               </a>
             </motion.div>
           </div>

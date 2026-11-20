@@ -22,12 +22,17 @@ export function nextChain(run: LoopRun): ChainKey {
   return run.hops.length >= 4 ? "base" : "unichain";
 }
 
-export function ChainRail({ run }: { run?: LoopRun }) {
+/**
+ * `next` overrides where the packet heads (a replay knows its route in advance). `travelMs` makes the
+ * packet cross once in exactly that time, so it arrives as the next leg lands, instead of looping while a
+ * live leg is outstanding.
+ */
+export function ChainRail({ run, next, travelMs }: { run?: LoopRun; next?: ChainKey; travelMs?: number }) {
   const reduce = useReducedMotion();
   const hops = run?.hops ?? [];
   const last = hops[hops.length - 1];
   const visited = new Set(hops.map((h) => h.chain));
-  const target = run?.status === "running" ? nextChain(run) : undefined;
+  const target = run?.status === "running" ? (next ?? nextChain(run)) : undefined;
 
   return (
     <div className="relative px-10 pb-16 pt-12 sm:px-20" aria-hidden>
@@ -56,7 +61,7 @@ export function ChainRail({ run }: { run?: LoopRun }) {
           );
         })}
 
-        {target && last && !reduce && <Packet key={hops.length} from={POS[last.chain]} to={POS[target]} color={COLOR[target]} />}
+        {target && last && !reduce && <Packet key={hops.length} from={POS[last.chain]} to={POS[target]} color={COLOR[target]} travelMs={travelMs} />}
         {!run && !reduce && <IdlePacket />}
 
         {ORDER.map((c) => (
@@ -107,14 +112,18 @@ function Node({ chain, lit, target, arrivals }: { chain: ChainKey; lit: boolean;
 }
 
 /** The bright head with a fading tail, running from the last chain heard from to the one expected next. */
-function Packet({ from, to, color }: { from: number; to: number; color: string }) {
+function Packet({ from, to, color, travelMs }: { from: number; to: number; color: string; travelMs?: number }) {
   const forward = to >= from;
   return (
     <motion.div
       className="absolute top-1/2 z-20"
-      initial={{ left: `${from}%` }}
-      animate={{ left: [`${from}%`, `${to}%`] }}
-      transition={{ duration: 1.5, repeat: Infinity, repeatDelay: 0.2, ease: EASE }}
+      initial={{ left: `${from}%`, opacity: travelMs ? 0 : 1 }}
+      animate={travelMs ? { left: `${to}%`, opacity: [0, 1, 1, 0.9] } : { left: [`${from}%`, `${to}%`] }}
+      transition={
+        travelMs
+          ? { left: { duration: travelMs / 1000, ease: EASE }, opacity: { duration: travelMs / 1000, times: [0, 0.12, 0.9, 1] } }
+          : { duration: 1.5, repeat: Infinity, repeatDelay: 0.2, ease: EASE }
+      }
     >
       <Head color={color} forward={forward} />
     </motion.div>
