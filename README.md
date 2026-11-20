@@ -12,6 +12,8 @@ Built for the Reactive Omni Buildathon, track **Every Second Counts**.
 
 *Recorded live on testnet (run `bench-1795071504653`). WETH drops to $1,600, so on price alone the loan could be liquidated. Seconds later the shield repays 280 USDC on Unichain, in the same callback that sets the new limit, and the account is never flagged: price update on [Base](https://sepolia.basescan.org/tx/0x84c62bf63b3e858bd23dc3201415d7884c229b102a7a852392ac6ef1fc4c7011), protection ordered on [Lasna](https://lasna.reactscan.net/tx/0x33cfb472fc5eff759fa1745ddcacdea8957f9253756a036f7f12981b2ff05216), repayment on [Unichain](https://sepolia.uniscan.xyz/tx/0x70e854bb05946ca67180aa70a0d217779d95637a0c81879d0bd0cfe1fdef0c1e); 5 s block to block.*
 
+▶ **[Watch the 2:43 demo video](https://youtu.be/J5_mckbzYFo)**: the problem, a live shield rescue, the five transactions behind it, the race test and the latency numbers.
+
 ### In one transaction chain
 
 **WETH drops on Base. About 2 seconds later, by block timestamps, the shield has repaid the loan on Unichain, and the account was never liquidatable.** This happened on testnet, and the price was moved by an ordinary browser wallet:
@@ -36,7 +38,7 @@ Built for the Reactive Omni Buildathon, track **Every Second Counts**.
 | **Execution** | [Full-loop transactions](#full-loop-transactions): every flow's origin tx, the ClearingHouse reaction on Lasna, and the callback it triggered, with explorer links, including the [shield repaying a loan on-chain](#auto-protection-the-shield). All seven [deployed contracts](#deployed-contracts) are source-verified on Sourcify. Raw per-leg timings for every run are in [`results/runs.jsonl`](results/runs.jsonl). |
 | **Integration** | [What the reactive contract decides](#what-the-reactive-contract-decides). It is the protocol, not a notifier: remove it and no limit, withdrawal, seizure or protection can happen. |
 | **Usefulness** | [Why](#why), [why it needs Reactive Omni, in numbers](#why-it-needs-reactive-omni-in-numbers), and [Auto-protection](#auto-protection-the-shield). You can [try the shield yourself](#try-it-yourself): anyone can move the test price. |
-| **Craft** | [Tests](#tests) (75, 97% of lines and 82% of branches covered, including fuzzing with randomly ordered cross-chain delivery), CI on every push, a scripted [demo](#2-demo-benchmark-race-test), a [hosted dashboard](https://kartikmanral092006.github.io/Lien/), [latency measured two ways](#results), and [run-it-yourself steps](#run-it-on-testnet). |
+| **Craft** | [Tests](#tests) (75, 97% of lines and 82% of branches covered, including fuzzing with randomly ordered cross-chain delivery), CI on every push, a [demo video](https://youtu.be/J5_mckbzYFo), a scripted [demo](#2-demo-benchmark-race-test), a [hosted dashboard](https://kartikmanral092006.github.io/Lien/), [latency measured two ways](#results), and [run-it-yourself steps](#run-it-on-testnet). |
 
 ## Why
 
@@ -231,7 +233,7 @@ Current deployment (2026-11-16), **with auto-protection and relayed batch re-pri
 | Test USDC | Unichain Sepolia (1301) | [`0xB14b46F29AC7F46c75E157f1477874c9B56291bc`](https://sepolia.uniscan.xyz/address/0xB14b46F29AC7F46c75E157f1477874c9B56291bc) | [verified](https://repo.sourcify.dev/1301/0xB14b46F29AC7F46c75E157f1477874c9B56291bc) |
 | PriceController | Base Sepolia (84532) | [`0xE078278A72a17ecCE70bf86fAA94F8618f4a119b`](https://sepolia.basescan.org/address/0xE078278A72a17ecCE70bf86fAA94F8618f4a119b) | [verified](https://repo.sourcify.dev/84532/0xE078278A72a17ecCE70bf86fAA94F8618f4a119b) |
 
-Earlier deployments are retired (their gas balances were returned with [`scripts/recover-funds.sh`](scripts/recover-funds.sh)), but their transactions stay on-chain and in `results/runs.jsonl`. The shield rescue at the top of this page ran on the 2026-11-14 deployment (ClearingHouse [`0xb523…bDC0`](https://lasna.reactscan.net/address/0xb52397CC590D8aB36cCEFffdEbcb9e87c27ebDC0)), whose flows are unchanged in the current code.
+Earlier deployments are retired (their gas balances were returned with [`scripts/recover-funds.sh`](scripts/recover-funds.sh)), but their transactions stay on-chain and in `results/runs.jsonl`. The shield GIF at the top of this page is from the current deployment; the browser-wallet rescue in *In one transaction chain* ran on the 2026-11-14 deployment (ClearingHouse [`0xb523…bDC0`](https://lasna.reactscan.net/address/0xb52397CC590D8aB36cCEFffdEbcb9e87c27ebDC0)), whose flows are unchanged in the current code.
 
 ### Try it yourself
 
